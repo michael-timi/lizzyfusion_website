@@ -1,0 +1,11 @@
+# Firebase App Hosting — project: lizzy-fusion
+# Create / link a backend: https://console.firebase.google.com/project/lizzy-fusion/apphosting
+# CLI: firebase apphosting:backends:create --project lizzy-fusion
+# https://firebase.google.com/docs/app-hosting/configure
+
+runConfig:
+  minInstances: 0
+  maxInstances: 100
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
