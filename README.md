@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lizzy Fusion
 
-## Getting Started
+**Modesty Redefined, Style Redesigned**
 
-First, run the development server:
+Official marketing and storefront-style site for **Lizzy Fusion** — modest fashion, bespoke and ready-to-wear, based in **Osogbo, Osun State, Nigeria**. The live experience is built with Next.js and presents collections, custom tailoring, training, and contact flows aligned with the studio’s vision.
+
+## What’s in this repo
+
+- **Next.js 16** (App Router) with **React 19** and **TypeScript**
+- **Tailwind CSS v4** for layout and styling
+- Pages for **Home**, **Shop**, **Custom / Bespoke**, **Training**, **Apprentices**, **About**, and **Contact**
+- Shared **brand, contact, and navigation** copy in `src/lib/site.ts` (single place to update phone, email, WhatsApp, vision, mission, and offerings)
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Other scripts:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command        | Description        |
+| -------------- | ------------------ |
+| `npm run dev`  | Development server |
+| `npm run build`| Production build   |
+| `npm run start`| Serve production   |
+| `npm run lint` | ESLint             |
 
-## Learn More
+## Project layout (high level)
 
-To learn more about Next.js, take a look at the following resources:
+- `src/app/` — routes and layouts (`page.tsx`, `layout.tsx`, `globals.css`)
+- `src/components/` — header, footer, forms, layout chrome
+- `public/brand/` — logo and brand overview assets
+- `AGENTS.md` / `CLAUDE.md` — notes for contributors and AI assistants working in this repo
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploying
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This app is a standard Next.js project and can be deployed on [Vercel](https://vercel.com) or any host that supports Node.js. Set environment variables in your host’s dashboard if you add secrets later; today’s content is mostly static and driven by `src/lib/site.ts`.
 
-## Deploy on Vercel
+## Repository
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Source: [github.com/michael-timi/lizzyfusion_website](https://github.com/michael-timi/lizzyfusion_website)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+*Lizzy Fusion — empowering modest style with bespoke care, ready-to-wear convenience, and studio training in Osogbo.*
