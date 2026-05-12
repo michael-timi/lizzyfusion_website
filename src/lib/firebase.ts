@@ -42,10 +42,11 @@ function readConfig(): FirebaseOptions | null {
 export const firebaseProjectId = "lizzy-fusion" as const;
 
 /**
- * Returns the default Firebase app, or `null` if config is missing (e.g. CI / fresh clone).
- * Call from Client Components or event handlers; avoid using before config exists.
+ * Returns the default Firebase app, or `null` if config is missing or we are not in the browser.
+ * Avoid initializing the client SDK during SSR.
  */
 export function getFirebaseApp(): FirebaseApp | null {
+  if (typeof window === "undefined") return null;
   const config = readConfig();
   if (!config) return null;
   if (getApps().length === 0) return initializeApp(config);

@@ -1,71 +1,71 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LeadForm } from "@/components/lead-form";
-import { formatNgn, sampleProducts, site, whatsappHref } from "@/lib/site";
+import { ShopCatalog } from "@/components/shop/shop-catalog";
+import { ShopHeroDual } from "@/components/shop/shop-hero-dual";
+import { sampleProducts, site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Shop",
+  title: "Shop all",
   description: `Browse ready-to-wear and made-to-order pieces from ${site.name}. Prices in Nigerian Naira; orders confirmed on WhatsApp.`,
 };
 
-export default function ShopPage() {
+type SearchParams = { q?: string };
+
+export default async function ShopPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const { q } = await searchParams;
+  const query = (q ?? "").trim();
+  const filtered = !query
+    ? [...sampleProducts]
+    : sampleProducts.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query.toLowerCase()) ||
+          p.tag.toLowerCase().includes(query.toLowerCase()),
+      );
+
+  const crumbLabel = query ? `Search · “${query}”` : "Shop all";
+
   return (
-    <main className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-      <p className="section-title">Collections</p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight">Shop & enquire</h1>
-      <p className="mt-4 max-w-2xl text-[var(--lf-muted)]">
-        Prices are listed in{" "}
-        <strong className="font-medium text-zinc-800">Nigerian Naira (₦)</strong>.
-        Ready-to-wear and made-to-order pieces are fulfilled from Osogbo—quick WhatsApp
-        links open a prefilled message you can edit. Use the form below when you want
-        your contact details bundled before chat.
-      </p>
+    <main>
+      <section className="scroll-mt-32 border-b border-[var(--lf-line)] bg-white">
+        <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6">
+          <nav className="text-sm text-[var(--lf-muted)]" aria-label="Breadcrumb">
+            <Link href="/" className="transition hover:text-[var(--lf-ink)]">
+              Home
+            </Link>
+            <span className="mx-2 text-zinc-300" aria-hidden>
+              /
+            </span>
+            <span className="font-medium text-[var(--lf-ink)]">{crumbLabel}</span>
+          </nav>
+        </div>
+        <ShopHeroDual />
+        <div
+          id="lookbook"
+          className="scroll-mt-28 border-t border-[var(--lf-line)] bg-zinc-50/90 px-4 py-3 text-center sm:px-6"
+        >
+          <Link
+            href="/lookbook"
+            className="text-sm font-semibold text-[var(--lf-purple-deep)] underline-offset-4 transition hover:text-[var(--lf-purple)] hover:underline"
+          >
+            Studio lookbook — styled by day →
+          </Link>
+        </div>
+      </section>
 
-      <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {sampleProducts.map((p) => {
-          const msg = whatsappHref(
-            [
-              `*${site.name} — product enquiry*`,
-              `Product: ${p.name}`,
-              `Listed price: ${formatNgn(p.price)}`,
-              `My name / size / colour preference:`,
-              `(please fill before sending)`,
-            ].join("\n"),
-          );
-          return (
-            <li
-              key={p.slug}
-              className="flex flex-col rounded-2xl border border-[var(--lf-line)] bg-white p-6 shadow-sm"
-            >
-              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--lf-purple)]">
-                {p.tag}
-              </span>
-              <h2 className="mt-2 text-lg font-semibold text-[var(--lf-ink)]">{p.name}</h2>
-              <p className="mt-3 text-2xl font-semibold text-[var(--lf-ink)]">
-                {formatNgn(p.price)}
-              </p>
-              <p className="mt-3 flex-1 text-sm text-[var(--lf-muted)]">{p.lead}</p>
-              <div className="mt-6 flex flex-col gap-2">
-                <a href={msg} target="_blank" rel="noreferrer" className="btn-primary text-center">
-                  Enquire on WhatsApp
-                </a>
-                <Link href="/custom" className="btn-secondary text-center text-sm">
-                  Need a custom version?
-                </Link>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <div id="best-sellers" className="scroll-mt-32 bg-[#fafafa]">
+        <ShopCatalog query={query} products={filtered} />
+      </div>
 
-      <section className="mt-16 border-t border-[var(--lf-line)] pt-16">
-        <h2 className="text-xl font-semibold text-[var(--lf-ink)]">
-          Send your details first
-        </h2>
+      <section className="mx-auto max-w-[1400px] border-t border-[var(--lf-line)] px-4 py-16 sm:px-6">
+        <h2 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">Send your details first</h2>
         <p className="mt-2 max-w-xl text-sm text-[var(--lf-muted)]">
-          Use this form when you want the studio to have your name, WhatsApp number, and
-          city on file before you jump into chat—your summary still opens WhatsApp for
-          you.
+          Use this form when you want the studio to have your name, WhatsApp number, and city on file before you jump
+          into chat—your summary still opens WhatsApp for you.
         </p>
         <div className="mt-8 max-w-xl">
           <LeadForm

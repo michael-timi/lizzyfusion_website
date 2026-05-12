@@ -1,13 +1,35 @@
 "use client";
 
-import Image from "next/image";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { landingMedia, nav, navStorefront, site } from "@/lib/site";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { startTransition, useEffect, useRef, useState } from "react";
+import { CartDrawer, useCartItemCount } from "@/components/layout/cart-drawer";
+import { useWishlistCount } from "@/components/shop/wishlist-heart";
+import { LfRemoteImage } from "@/components/ui/lf-remote-image";
+import { IconHeart } from "@/components/ui/icon-heart";
+import { landingMedia, nav, navStorefront, shopHrefForSpecialty, site } from "@/lib/site";
 
-function IconSearch({ className }: { className?: string }) {
+const MegaOccasionsPanel = dynamic(
+  () => import("@/components/layout/mega-occasions-panel").then((m) => m.MegaOccasionsPanel),
+  { loading: () => <div className="min-h-[12rem] animate-pulse rounded-sm bg-zinc-100" aria-hidden /> },
+);
+
+const MegaCraftCarePanel = dynamic(
+  () => import("@/components/layout/mega-craft-care-panel").then((m) => m.MegaCraftCarePanel),
+  { loading: () => <div className="min-h-[12rem] animate-pulse rounded-sm bg-zinc-100" aria-hidden /> },
+);
+
+function IconSearch({ className = "" }: { className?: string }) {
   return (
-    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg
+      className={className}
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
       <path
         d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm10 2-4.35-4.35"
         stroke="currentColor"
@@ -20,7 +42,14 @@ function IconSearch({ className }: { className?: string }) {
 
 function IconUser({ className }: { className?: string }) {
   return (
-    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg
+      className={className}
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
       <path
         d="M20 21a8 8 0 1 0-16 0M12 13a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"
         stroke="currentColor"
@@ -31,22 +60,16 @@ function IconUser({ className }: { className?: string }) {
   );
 }
 
-function IconHeart({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.49 5.49 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.49 5.49 0 0 0 0-7.78Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 function IconBag({ className }: { className?: string }) {
   return (
-    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg
+      className={className}
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
       <path
         d="M6 7h12l-1 12H7L6 7Zm3-3h6v4H9V4Z"
         stroke="currentColor"
@@ -60,187 +83,392 @@ function IconBag({ className }: { className?: string }) {
 
 function IconMenu({ className }: { className?: string }) {
   return (
-    <svg className={className} width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <svg
+      className={className}
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M4 7h16M4 12h16M4 17h16"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
 
 function IconClose({ className }: { className?: string }) {
   return (
-    <svg className={className} width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <svg
+      className={className}
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
 
-const linkClass = "block py-1.5 text-sm text-[var(--lf-ink)] transition hover:text-[var(--lf-purple)]";
+const linkClass =
+  "block break-words py-1.5 text-sm text-[var(--lf-ink)] transition hover:text-[var(--lf-purple)]";
 
 export function StoreHeaderNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const cartCount = useCartItemCount();
+  const wishlistCount = useWishlistCount();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [megaOpenId, setMegaOpenId] = useState<string | null>(null);
+  const megaCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!mobileOpen) return;
+    if (!mobileOpen && !cartOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [mobileOpen]);
+  }, [mobileOpen, cartOpen]);
+
+  useEffect(() => {
+    startTransition(() => {
+      setMegaOpenId(null);
+    });
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    startTransition(() => {
+      setMegaOpenId(null);
+    });
+  }, [searchOpen]);
+
+  useEffect(
+    () => () => {
+      if (megaCloseTimerRef.current) clearTimeout(megaCloseTimerRef.current);
+    },
+    [],
+  );
 
   const catLinks = site.specialties.slice(0, 8).map((label) => ({
     label,
-    href: "/shop",
+    href: shopHrefForSpecialty(label),
   }));
 
   return (
-    <div className="border-b border-[var(--lf-line)] bg-white">
-      <div className="relative mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-        <div className="flex items-center gap-3 lg:justify-start">
-          <button
-            type="button"
-            className="rounded-md p-2 text-[var(--lf-ink)] lg:hidden"
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-drawer"
-            onClick={() => setMobileOpen(true)}
-          >
-            <IconMenu />
-          </button>
-          <Link href="/" className="flex min-w-0 items-center gap-2">
-            <span className="relative h-10 w-36 shrink-0 sm:h-11 sm:w-40">
-              <Image
-                src={site.logo}
-                alt={site.name}
-                fill
-                className="object-contain object-left"
-                sizes="160px"
-                priority
-              />
-            </span>
-          </Link>
-        </div>
+    <>
+      {searchOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-[40] bg-black/25 backdrop-blur-sm"
+          aria-label="Close search"
+          onClick={() => setSearchOpen(false)}
+        />
+      ) : null}
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      <div
+        className="relative z-[50] overflow-visible border-b border-[var(--lf-line)] bg-white"
+        onMouseEnter={() => {
+          if (megaCloseTimerRef.current) {
+            clearTimeout(megaCloseTimerRef.current);
+            megaCloseTimerRef.current = null;
+          }
+        }}
+        onMouseLeave={() => {
+          megaCloseTimerRef.current = setTimeout(() => {
+            setMegaOpenId(null);
+            megaCloseTimerRef.current = null;
+          }, 150);
+        }}
+      >
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+          <div className="flex items-center gap-3 lg:justify-start">
+            <button
+              type="button"
+              className="rounded-md p-2 text-[var(--lf-ink)] lg:hidden"
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-drawer"
+              onClick={() => setMobileOpen(true)}
+            >
+              <IconMenu />
+            </button>
+            <Link
+              href="/"
+              className="flex min-w-0 flex-col justify-center leading-tight"
+            >
+              <span className="font-serif text-[1.35rem] font-semibold tracking-tight text-[var(--lf-ink)] sm:text-2xl md:text-[1.65rem]">
+                Lizzy Fusion
+                <span
+                  className="ml-0.5 inline-block h-1.5 w-1.5 translate-y-px rounded-full bg-[var(--lf-purple)]"
+                  aria-hidden
+                />
+              </span>
+              <span className="mt-0.5 max-w-[11rem] truncate text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--lf-muted)] sm:max-w-none sm:text-[11px]">
+                {site.slogan}
+              </span>
+            </Link>
+          </div>
 
-        <nav className="hidden items-center justify-center gap-8 lg:flex" aria-label="Primary">
-          {navStorefront.map((item) => (
-            <MegaTrigger key={item.id} item={item} catLinks={catLinks} />
-          ))}
-        </nav>
+          <nav
+            className={`hidden items-center justify-center gap-8 lg:flex ${searchOpen ? "pointer-events-none opacity-40" : ""}`}
+            aria-label="Primary"
+          >
+            {navStorefront.map((item) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                onMouseEnter={() => {
+                  if (!searchOpen) setMegaOpenId(item.id);
+                }}
+                className={`inline-flex items-center gap-1 py-2 text-sm font-medium transition hover:text-[var(--lf-purple)] ${megaOpenId === item.id ? "text-[var(--lf-purple)]" : "text-[var(--lf-ink)]"}`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
-        <div className="flex items-center justify-end gap-1 sm:gap-2">
-          <button
-            type="button"
-            className="hidden rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100 sm:block"
-            aria-label="Search (coming soon)"
-          >
-            <IconSearch />
-          </button>
-          <Link
-            href="/contact"
-            className="hidden rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100 sm:block"
-            aria-label="Contact"
-          >
-            <IconUser />
-          </Link>
-          <Link
-            href="/shop"
-            className="hidden rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100 sm:block"
-            aria-label="Wishlist"
-          >
-            <IconHeart />
-          </Link>
-          <Link
-            href="/shop"
-            className="rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100"
-            aria-label="Shop bag"
-          >
-            <IconBag />
-          </Link>
-        </div>
-      </div>
-
-      {mobileOpen ? (
-        <div
-          className="fixed inset-0 z-[60] flex lg:hidden"
-          id="mobile-drawer"
-          role="dialog"
-          aria-modal="true"
-        >
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40"
-            aria-label="Close menu"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div className="relative ml-auto flex h-full w-[min(100%,22rem)] flex-col bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--lf-line)] px-4 py-3">
-              <span className="font-serif text-lg font-semibold">{site.name}</span>
+          <div className="flex items-center justify-end gap-1 sm:gap-2">
+            {searchOpen ? (
               <button
                 type="button"
-                className="rounded-md p-2"
-                onClick={() => setMobileOpen(false)}
-                aria-label="Close"
+                className="rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100"
+                aria-label="Close search"
+                onClick={() => setSearchOpen(false)}
               >
                 <IconClose />
               </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 py-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
-                Shop
-              </p>
-              {navStorefront.map((item) => (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  className="block border-b border-zinc-100 py-3 text-sm font-medium"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <p className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
-                Studio
-              </p>
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="block border-b border-zinc-100 py-3 text-sm"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
+            ) : (
+              <button
+                type="button"
+                className="rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100"
+                aria-label="Open search"
+                onClick={() => {
+                  setSearchOpen(true);
+                  const q =
+                    pathname === "/shop" ? (searchParams.get("q") ?? "") : "";
+                  setQuery(q);
+                }}
+              >
+                <IconSearch />
+              </button>
+            )}
+            <Link
+              href="/register"
+              className="hidden rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100 sm:block"
+              aria-label="Create account"
+            >
+              <IconUser />
+            </Link>
+            <Link
+              href="/wishlist"
+              className={`relative hidden rounded-md p-2 sm:block ${
+                wishlistCount > 0
+                  ? "text-red-600 hover:bg-red-50 hover:text-red-700"
+                  : "text-[var(--lf-ink)] hover:bg-zinc-100"
+              }`}
+              aria-label={
+                wishlistCount > 0 ? `Wishlist, ${wishlistCount} items` : "Wishlist"
+              }
+            >
+              <IconHeart filled={wishlistCount > 0} />
+              {wishlistCount > 0 ? (
+                <span className="absolute right-1 top-1 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </span>
+              ) : null}
+            </Link>
+            <button
+              type="button"
+              className="relative rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100"
+              aria-label={cartCount > 0 ? `Shopping bag, ${cartCount} items` : "Open shopping bag"}
+              onClick={() => {
+                setSearchOpen(false);
+                startTransition(() => {
+                  setMegaOpenId(null);
+                });
+                setCartOpen(true);
+              }}
+            >
+              <IconBag />
+              {cartCount > 0 ? (
+                <span className="absolute right-1 top-1 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[var(--lf-purple-deep)] px-1 text-[10px] font-bold leading-none text-white">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              ) : null}
+            </button>
           </div>
         </div>
-      ) : null}
-    </div>
+
+        {!searchOpen && megaOpenId ? (
+          <div className="absolute inset-x-0 top-full z-[100] -mt-px border-t border-[var(--lf-line)] bg-white shadow-[0_24px_48px_-12px_rgba(0,0,0,0.12)]">
+            <div className="mx-auto max-h-[min(92dvh,calc(100dvh-3rem))] w-full min-h-0 max-w-[1400px] overflow-auto bg-white px-4 py-8 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.08)] sm:px-6 sm:py-10">
+              <MegaPanelContents megaId={megaOpenId} catLinks={catLinks} />
+            </div>
+          </div>
+        ) : null}
+
+        {searchOpen ? (
+          <div className="border-t border-[var(--lf-line)] bg-white px-4 py-3 sm:px-6">
+            <form
+              className="mx-auto flex max-w-[1400px] items-center gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = query.trim();
+                router.push(q ? `/shop?q=${encodeURIComponent(q)}` : "/shop");
+                setSearchOpen(false);
+              }}
+            >
+              <IconSearch className="shrink-0 text-zinc-400" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search catalogue…"
+                className="min-w-0 flex-1 border-0 border-b border-zinc-200 bg-transparent py-2 text-base text-[var(--lf-ink)] outline-none placeholder:text-zinc-400 focus:border-[var(--lf-purple)]"
+                aria-label="Search"
+                autoFocus
+              />
+              {query ? (
+                <button
+                  type="button"
+                  className="shrink-0 rounded-md p-2 text-zinc-500 hover:bg-zinc-100 hover:text-[var(--lf-ink)]"
+                  aria-label="Clear search"
+                  onClick={() => setQuery("")}
+                >
+                  <IconClose />
+                </button>
+              ) : null}
+            </form>
+          </div>
+        ) : null}
+
+        {mobileOpen ? (
+          <div
+            className="fixed inset-0 z-[60] flex lg:hidden"
+            id="mobile-drawer"
+            role="dialog"
+            aria-modal="true"
+          >
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/40"
+              aria-label="Close menu"
+              onClick={() => setMobileOpen(false)}
+            />
+            <div className="relative ml-auto flex h-full w-[min(100%,22rem)] flex-col bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[var(--lf-line)] px-4 py-3">
+                <span className="font-serif text-lg font-semibold">
+                  {site.name}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-md p-2"
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Close"
+                >
+                  <IconClose />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-4 py-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
+                  Shop
+                </p>
+                {navStorefront.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className="block border-b border-zinc-100 py-3 text-sm font-medium"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <Link
+                  href="/wishlist"
+                  className={`block border-b border-zinc-100 py-3 text-sm font-medium ${
+                    wishlistCount > 0 ? "text-red-600" : ""
+                  }`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Wish list{wishlistCount > 0 ? ` (${wishlistCount})` : ""}
+                </Link>
+                <button
+                  type="button"
+                  className="block w-full border-b border-zinc-100 py-3 text-left text-sm font-medium"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setSearchOpen(false);
+                    startTransition(() => setMegaOpenId(null));
+                    setCartOpen(true);
+                  }}
+                >
+                  Shopping bag{cartCount > 0 ? ` (${cartCount})` : ""}
+                </button>
+                <p className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
+                  Studio
+                </p>
+                {nav.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="block border-b border-zinc-100 py-3 text-sm"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <button
+                  type="button"
+                  className="mt-4 w-full border border-[var(--lf-line)] py-3 text-left text-sm font-semibold text-[var(--lf-purple)]"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setSearchOpen(true);
+                    setQuery(
+                      pathname === "/shop" ? (searchParams.get("q") ?? "") : "",
+                    );
+                    router.push("/shop");
+                  }}
+                >
+                  Search catalogue
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </>
   );
 }
 
-function MegaTrigger({
-  item,
+function MegaPanelContents({
+  megaId,
   catLinks,
 }: {
-  item: (typeof navStorefront)[number];
+  megaId: string;
   catLinks: { label: string; href: string }[];
 }) {
   return (
-    <div className="group relative">
-      <Link
-        href={item.href}
-        className="inline-flex items-center gap-1 py-2 text-sm font-medium text-[var(--lf-ink)] transition hover:text-[var(--lf-purple)]"
-      >
-        {item.label}
-      </Link>
-      <div
-        className="pointer-events-none invisible absolute left-1/2 top-full z-40 w-screen max-w-[100vw] -translate-x-1/2 opacity-0 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.12)] transition duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100"
-        style={{ marginTop: "1px" }}
-      >
-        <div className="mx-auto max-w-[1400px] border-t border-[var(--lf-line)] bg-white px-6 py-10">
-          {item.id === "collection" ? (
-            <div className="grid gap-10 lg:grid-cols-[1fr_1fr_1fr_minmax(0,11rem)_minmax(0,11rem)]">
-              <div>
+    <>
+      {megaId === "collection" ? (
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,10rem)_minmax(0,10rem)] lg:gap-10">
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
                   Category
                 </p>
@@ -259,7 +487,7 @@ function MegaTrigger({
                   ))}
                 </ul>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
                   Featured
                 </p>
@@ -270,7 +498,7 @@ function MegaTrigger({
                     </Link>
                   </li>
                   <li>
-                    <Link href="/shop" className={linkClass}>
+                    <Link href="/shop#best-sellers" className={linkClass}>
                       Best sellers
                     </Link>
                   </li>
@@ -286,7 +514,7 @@ function MegaTrigger({
                   </li>
                 </ul>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
                   More
                 </p>
@@ -309,26 +537,27 @@ function MegaTrigger({
                 </ul>
               </div>
               <MegaImageCard
-                href="/shop"
-                label="Wedding & reception"
+                href={landingMedia.collectionTiles[0].href}
+                label={landingMedia.collectionTiles[0].label}
                 src={landingMedia.collectionTiles[0].image}
               />
               <MegaImageCard
-                href="/shop"
+                href="/shop/aso-ebi-set"
                 label="Aso-ebi & groups"
                 src={landingMedia.collectionTiles[1].image}
               />
             </div>
           ) : null}
-          {item.id === "new-in" ? (
+      {megaId === "new-in" ? (
             <div className="grid gap-10 lg:grid-cols-[1fr_minmax(0,14rem)_minmax(0,14rem)]">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
                   New in Osogbo
                 </p>
                 <p className="mt-4 max-w-md text-sm leading-relaxed text-[var(--lf-muted)]">
-                  Latest ready-to-wear drops and made-to-order slots. Prices in naira—confirm
-                  availability on WhatsApp after you enquire from the shop.
+                  Latest ready-to-wear drops and made-to-order slots. Prices in
+                  naira—confirm availability on WhatsApp after you enquire from
+                  the shop.
                 </p>
                 <Link
                   href="/shop#best-sellers"
@@ -337,16 +566,28 @@ function MegaTrigger({
                   View best sellers
                 </Link>
               </div>
-              <MegaImageCard href="/shop" label="Layered sets" src={landingMedia.lookbook[0].image} />
-              <MegaImageCard href="/shop" label="Evening mood" src={landingMedia.lookbook[1].image} />
+              <MegaImageCard
+                href={landingMedia.lookbook[1].href}
+                label={landingMedia.lookbook[1].label}
+                src={landingMedia.lookbook[1].image}
+              />
+              <MegaImageCard
+                href={landingMedia.lookbook[2].href}
+                label={landingMedia.lookbook[2].label}
+                src={landingMedia.lookbook[2].image}
+              />
             </div>
           ) : null}
-          {item.id === "lookbook" ? (
+      {megaId === "lookbook" ? (
             <div className="grid gap-8 lg:grid-cols-4">
               {landingMedia.lookbook.map((d) => (
-                <Link key={d.label} href="/#lookbook" className="group/card block">
+                <Link
+                  key={d.label}
+                  href={d.href}
+                  className="group/card block min-w-0"
+                >
                   <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100">
-                    <Image
+                    <LfRemoteImage
                       src={d.image}
                       alt=""
                       fill
@@ -354,119 +595,31 @@ function MegaTrigger({
                       sizes="200px"
                     />
                   </div>
-                  <p className="mt-3 text-sm font-semibold">{d.label}</p>
-                  <p className="text-xs text-[var(--lf-muted)]">{d.caption}</p>
+                  <p className="mt-3 break-words text-sm font-semibold leading-snug">{d.label}</p>
+                  <p className="text-xs break-words text-[var(--lf-muted)]">{d.caption}</p>
                 </Link>
               ))}
             </div>
           ) : null}
-          {item.id === "occasions" ? (
-            <div className="grid gap-10 lg:grid-cols-[1fr_1fr_minmax(0,14rem)]">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
-                  For every chapter
-                </p>
-                <ul className="mt-4 space-y-1">
-                  <li>
-                    <Link href="/custom" className={linkClass}>
-                      Wedding & reception
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/custom" className={linkClass}>
-                      Aso-ebi coordination
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/custom" className={linkClass}>
-                      Church & civil
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/custom" className={linkClass}>
-                      Office & boardroom
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
-                  Fit & sizing
-                </p>
-                <p className="mt-4 text-sm leading-relaxed text-[var(--lf-muted)]">
-                  Bespoke and made-to-measure appointments in {site.location.city}. Share your
-                  timeline and references—we reply on WhatsApp with next steps.
-                </p>
-                <Link
-                  href="/custom"
-                  className="mt-4 inline-block text-sm font-semibold text-[var(--lf-purple)] underline-offset-4 hover:underline"
-                >
-                  Start a custom request
-                </Link>
-              </div>
-              <MegaImageCard href="/custom" label="Occasion couture" src={landingMedia.hero} />
-            </div>
-          ) : null}
-          {item.id === "sustainability" ? (
-            <div className="grid gap-10 lg:grid-cols-[minmax(0,14rem)_1fr_1fr]">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
-                  Craft & care
-                </p>
-                <ul className="mt-4 space-y-1">
-                  <li>
-                    <Link href="/about" className={linkClass}>
-                      Mission & vision
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/about" className={linkClass}>
-                      Ethical practices
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/contact" className={linkClass}>
-                      Fabric sourcing
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/contact" className={linkClass}>
-                      Care & alterations
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-              <div className="relative aspect-[3/4] max-h-[22rem] overflow-hidden bg-zinc-100">
-                <Image
-                  src={landingMedia.sustainability}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="400px"
-                />
-              </div>
-              <div className="relative aspect-[3/4] max-h-[22rem] overflow-hidden bg-zinc-100">
-                <Image
-                  src="https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?w=800&q=80&auto=format&fit=crop"
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="400px"
-                />
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
+      {megaId === "occasions" ? <MegaOccasionsPanel /> : null}
+      {megaId === "sustainability" ? <MegaCraftCarePanel /> : null}
+    </>
   );
 }
 
-function MegaImageCard({ href, label, src }: { href: string; label: string; src: string }) {
+function MegaImageCard({
+  href,
+  label,
+  src,
+}: {
+  href: string;
+  label: string;
+  src: string;
+}) {
   return (
-    <Link href={href} className="group/img block">
+    <Link href={href} className="group/img block min-w-0">
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-zinc-100">
-        <Image
+        <LfRemoteImage
           src={src}
           alt=""
           fill
@@ -474,7 +627,7 @@ function MegaImageCard({ href, label, src }: { href: string; label: string; src:
           sizes="180px"
         />
       </div>
-      <p className="mt-3 text-sm font-medium">{label}</p>
+      <p className="mt-3 break-words text-sm font-medium leading-snug">{label}</p>
     </Link>
   );
 }

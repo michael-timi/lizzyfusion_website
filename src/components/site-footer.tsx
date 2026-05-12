@@ -15,29 +15,25 @@ export function SiteFooter() {
               Join the {site.name} list
             </p>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-zinc-400">
-              New drops, aso-ebi slots, and Osogbo studio dates—sent sparingly. Reply on
-              WhatsApp anytime.
+              New drops, aso-ebi slots, and Osogbo studio dates—tell us on WhatsApp or email
+              and we will note your preferences.
             </p>
-            <form
-              className="mt-6 flex max-w-md flex-col gap-2 sm:flex-row"
-              action={`mailto:${site.contact.email}`}
-              method="get"
-            >
-              <input type="hidden" name="subject" value={`${site.name} — mailing list`} />
-              <input
-                name="body"
-                type="email"
-                required
-                placeholder="Your email"
-                className="min-w-0 flex-1 border border-zinc-600 bg-transparent px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-white"
-              />
-              <button
-                type="submit"
-                className="shrink-0 border border-white bg-white px-6 py-3 text-sm font-semibold text-[#1a1a1a] transition hover:bg-zinc-200"
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a
+                href={quickHi}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex border border-white bg-white px-6 py-3 text-sm font-semibold text-[#1a1a1a] transition hover:bg-zinc-200"
               >
-                Join
-              </button>
-            </form>
+                WhatsApp updates
+              </a>
+              <Link
+                href="/contact"
+                className="inline-flex border border-zinc-600 px-6 py-3 text-sm font-semibold text-white transition hover:border-white"
+              >
+                Email the studio
+              </Link>
+            </div>
             <div className="mt-8 flex gap-4 text-zinc-500">
               <span className="text-xs uppercase tracking-wider">Social</span>
               <a href={quickHi} className="text-xs text-white hover:underline" target="_blank" rel="noreferrer">
@@ -82,6 +78,21 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/lookbook" className="hover:text-white">
+                  Lookbook
+                </Link>
+              </li>
+              <li>
+                <Link href="/wishlist" className="hover:text-white">
+                  Wish list
+                </Link>
+              </li>
+              <li>
+                <Link href="/register" className="hover:text-white">
+                  Create account
+                </Link>
+              </li>
+              <li>
                 <Link href="/custom" className="hover:text-white">
                   Custom & bespoke
                 </Link>
@@ -96,6 +107,11 @@ export function SiteFooter() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Help</p>
             <ul className="mt-4 space-y-2 text-sm">
+              <li>
+                <Link href="/faqs" className="hover:text-white">
+                  FAQs
+                </Link>
+              </li>
               <li>
                 <Link href="/contact" className="hover:text-white">
                   Contact

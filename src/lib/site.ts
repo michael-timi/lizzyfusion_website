@@ -65,6 +65,16 @@ export const site = {
     "Nationwide delivery arranged on request · Complimentary fitting notes for bespoke in Osogbo",
 } as const;
 
+/**
+ * Canonical origin for Open Graph, sitemap, and robots.
+ * Set `NEXT_PUBLIC_SITE_URL` in production (HTTPS, no trailing slash), e.g. `https://www.yourdomain.com`.
+ */
+export function publicSiteUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (raw) return raw.replace(/\/$/, "");
+  return "http://localhost:3000";
+}
+
 /** Replace with real pieces and photography when available. */
 export const sampleProducts = [
   {
@@ -73,8 +83,10 @@ export const sampleProducts = [
     tag: "Ready-to-wear",
     price: 85000,
     lead: "Ships / pickup in Osogbo after size confirmation.",
+    description:
+      "Layered modest silhouette with a soft drape—ideal for receptions and elevated everyday. Pair with heels or flats; length and lining tweaks are guided in studio.",
     image:
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&q=80&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&q=80&auto=format&fit=crop&facepad=2",
   },
   {
     slug: "aso-ebi-set",
@@ -82,6 +94,8 @@ export const sampleProducts = [
     tag: "Made-to-order",
     price: 125000,
     lead: "Fabric discussion on WhatsApp; group orders welcome.",
+    description:
+      "Coordinated blouse and wrapper tailored for aso-ebi groups. Embellishment and fabric are finalised on WhatsApp before cutting so every piece matches your palette.",
     image:
       "https://images.unsplash.com/photo-1556821840-30a7b40c77e9?w=800&q=80&auto=format&fit=crop",
   },
@@ -91,18 +105,77 @@ export const sampleProducts = [
     tag: "Ready-to-wear",
     price: 62000,
     lead: "Limited sizes — ask for availability.",
+    description:
+      "Clean co-ord set for boardroom-to-brunch days. Breathable layers keep you comfortable through long hours; confirm available sizes on WhatsApp before pickup.",
     image:
       "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&q=80&auto=format&fit=crop",
   },
+  {
+    slug: "reception-full-length",
+    name: "Reception full-length gown",
+    tag: "Made-to-order",
+    price: 185000,
+    lead: "Fittings in Osogbo; fabric sourced with you.",
+    description:
+      "Floor-length reception drama with structure through the bodice and ease through the skirt. Fittings happen in Osogbo with fabric sourcing guided by the studio.",
+    image:
+      "https://images.unsplash.com/photo-1566174053879-435285fbf655?w=800&q=80&auto=format&fit=crop",
+  },
+  {
+    slug: "everyday-wrap-dress",
+    name: "Everyday wrap dress",
+    tag: "Ready-to-wear",
+    price: 48000,
+    lead: "Light layering; check sizes on WhatsApp.",
+    description:
+      "Easy wrap dress for errands, visits, and low-key events. Light layering works year-round—ask for current colourways and sizes on WhatsApp.",
+    image:
+      "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=800&q=80&auto=format&fit=crop",
+  },
+  {
+    slug: "church-shift-dress",
+    name: "Church shift dress",
+    tag: "Ready-to-wear",
+    price: 55000,
+    lead: "Classic length; limited restock.",
+    description:
+      "Classic shift length with modest coverage for Sunday and weekday services. Limited restock cycles—message the studio to hold your size.",
+    image:
+      "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=800&q=80&auto=format&fit=crop",
+  },
 ] as const;
+
+export type SampleProduct = (typeof sampleProducts)[number];
+
+export function getSampleProductBySlug(slug: string): SampleProduct | undefined {
+  return sampleProducts.find((p) => p.slug === slug);
+}
+
+/** Map nav mega “specialty” labels to a representative catalogue PDP (or `/shop` when none fits). */
+export function shopHrefForSpecialty(label: string): string {
+  const table: Record<string, SampleProduct["slug"]> = {
+    "Wedding dress": "reception-full-length",
+    "Ready-to-wear": "signature-abaya-rtw",
+    "Reception dress": "reception-full-length",
+    "Aso-ebi": "aso-ebi-set",
+    "Dinner gowns": "reception-full-length",
+    "Casual wear": "everyday-wrap-dress",
+    "Civil dress": "everyday-wrap-dress",
+    "Church wear": "church-shift-dress",
+    "Office wear": "office-modest-set",
+    "Ball gowns": "reception-full-length",
+  };
+  const slug = table[label];
+  return slug ? `/shop/${slug}` : "/shop";
+}
 
 /** Primary storefront nav (Modimal-style). Other routes stay in footer / mobile sheet. */
 export const navStorefront = [
   { id: "collection", label: "Collection", href: "/shop" },
   { id: "new-in", label: "New In", href: "/shop#best-sellers" },
-  { id: "lookbook", label: "Lookbook", href: "/shop#lookbook" },
+  { id: "lookbook", label: "Lookbook", href: "/lookbook" },
   { id: "occasions", label: "Occasions", href: "/custom" },
-  { id: "sustainability", label: "Craft & care", href: "/about" },
+  { id: "sustainability", label: "Craft & care", href: "/craft-care" },
 ] as const;
 
 export const nav = [
@@ -113,6 +186,7 @@ export const nav = [
   { href: "/apprentice", label: "Apprentices" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
+  { href: "/register", label: "Create account" },
 ] as const;
 
 /** Hero + collection tiles — placeholder photography until studio shots exist. */
@@ -123,28 +197,28 @@ export const landingMedia = {
   collectionTiles: [
     {
       label: "Wedding & reception",
-      href: "/shop",
+      href: "/shop/reception-full-length",
       image:
         "https://images.unsplash.com/photo-1519741497674-611481863552?w=900&q=80&auto=format&fit=crop",
       span: "large" as const,
     },
     {
       label: "Dresses & gowns",
-      href: "/shop",
+      href: "/shop/everyday-wrap-dress",
       image:
         "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=900&q=80&auto=format&fit=crop",
       span: "tall" as const,
     },
     {
       label: "Ready-to-wear",
-      href: "/shop",
+      href: "/shop/signature-abaya-rtw",
       image:
         "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=900&q=80&auto=format&fit=crop",
       span: "wide" as const,
     },
     {
       label: "Church & office",
-      href: "/shop",
+      href: "/shop/office-modest-set",
       image:
         "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=900&q=80&auto=format&fit=crop",
       span: "small" as const,
@@ -152,30 +226,84 @@ export const landingMedia = {
   ],
   lookbook: [
     {
+      label: "Sunday",
+      caption: "Quiet polish",
+      href: "/lookbook?day=Sunday",
+      image:
+        "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=600&q=80&auto=format&fit=crop",
+      heroImage:
+        "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=1400&q=85&auto=format&fit=crop",
+      shopSlugs: ["church-shift-dress", "signature-abaya-rtw"] as const,
+      badgeNewOnIndex: 0,
+    },
+    {
       label: "Monday",
       caption: "Aso-ebi mood",
+      href: "/lookbook?day=Monday",
       image:
         "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&q=80&auto=format&fit=crop",
+      heroImage:
+        "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=1400&q=85&auto=format&fit=crop",
+      shopSlugs: ["aso-ebi-set", "reception-full-length"] as const,
+      badgeNewOnIndex: 0,
     },
     {
       label: "Tuesday",
       caption: "Office modest",
+      href: "/lookbook?day=Tuesday",
       image:
         "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=80&auto=format&fit=crop",
+      heroImage:
+        "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1400&q=85&auto=format&fit=crop",
+      shopSlugs: ["office-modest-set", "church-shift-dress"] as const,
     },
     {
       label: "Wednesday",
       caption: "Reception glam",
+      href: "/lookbook?day=Wednesday",
       image:
         "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=600&q=80&auto=format&fit=crop",
+      heroImage:
+        "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=1400&q=85&auto=format&fit=crop",
+      shopSlugs: ["reception-full-length", "everyday-wrap-dress"] as const,
+      badgeNewOnIndex: 1,
     },
     {
       label: "Thursday",
       caption: "Casual fusion",
+      href: "/lookbook?day=Thursday",
       image:
         "https://images.unsplash.com/photo-1469334031218-e382a71b764b?w=600&q=80&auto=format&fit=crop",
+      heroImage:
+        "https://images.unsplash.com/photo-1469334031218-e382a71b764b?w=1400&q=85&auto=format&fit=crop",
+      shopSlugs: ["everyday-wrap-dress", "signature-abaya-rtw"] as const,
+    },
+    {
+      label: "Friday",
+      caption: "Golden hour",
+      href: "/lookbook?day=Friday",
+      image:
+        "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=600&q=80&auto=format&fit=crop",
+      heroImage:
+        "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=1400&q=85&auto=format&fit=crop",
+      shopSlugs: ["signature-abaya-rtw", "office-modest-set"] as const,
+      badgeNewOnIndex: 0,
+    },
+    {
+      label: "Saturday",
+      caption: "Weekend statement",
+      href: "/lookbook?day=Saturday",
+      image:
+        "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=600&q=80&auto=format&fit=crop",
+      heroImage:
+        "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=1400&q=85&auto=format&fit=crop",
+      shopSlugs: ["office-modest-set", "reception-full-length"] as const,
+      badgeNewOnIndex: 0,
     },
   ],
+  /** Split-panel register / login (lifestyle). */
+  authPanel:
+    "https://images.unsplash.com/photo-1499951360447-b19be0e94e09?w=1400&q=80&auto=format&fit=crop",
   social: [
     "https://images.unsplash.com/photo-1525507119028-ed4c629a60a6?w=600&q=80&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&q=80&auto=format&fit=crop",
@@ -184,6 +312,27 @@ export const landingMedia = {
     "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=600&q=80&auto=format&fit=crop",
   ],
 } as const;
+
+export type LookbookLook = (typeof landingMedia.lookbook)[number];
+
+/** Resolve the two catalogue pieces that make up a lookbook “shop the look” row. */
+export function lookbookShopProducts(look: LookbookLook): [SampleProduct, SampleProduct] | null {
+  const a = getSampleProductBySlug(look.shopSlugs[0]);
+  const b = getSampleProductBySlug(look.shopSlugs[1]);
+  if (!a || !b) return null;
+  return [a, b];
+}
+
+/** PDP gallery: primary image plus lookbook alternates (up to 4). */
+export function galleryUrlsForProduct(product: SampleProduct): readonly string[] {
+  const urls: string[] = [product.image];
+  for (const row of landingMedia.lookbook) {
+    if (urls.length >= 4) break;
+    if (!urls.includes(row.image)) urls.push(row.image);
+  }
+  while (urls.length < 4) urls.push(product.image);
+  return urls;
+}
 
 export function formatNgn(amount: number) {
   return new Intl.NumberFormat("en-NG", {
