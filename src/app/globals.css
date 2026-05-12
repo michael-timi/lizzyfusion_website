@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+:root {
+  --lf-ink: #3f3f3f;
+  --lf-purple: #902a8f;
+  --lf-purple-deep: #6d216c;
+  --lf-purple-faint: #faf3fa;
+  --lf-line: #e7e5e4;
+  --lf-muted: #666666;
+  color-scheme: only light;
+}
+
+@theme inline {
+  --color-background: #ffffff;
+  --color-foreground: var(--lf-ink);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: #ffffff;
+  color: var(--lf-ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.input {
+  @apply w-full rounded-xl border border-[var(--lf-line)] bg-white px-3 py-2.5 text-sm text-[var(--lf-ink)] outline-none transition placeholder:text-zinc-400 focus:border-[var(--lf-purple)] focus:ring-2 focus:ring-[var(--lf-purple)]/20;
+}
+
+.btn-primary {
+  @apply inline-flex flex-1 items-center justify-center rounded-full bg-[var(--lf-purple)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--lf-purple-deep)] sm:flex-none;
+}
+
+.btn-secondary {
+  @apply inline-flex flex-1 items-center justify-center rounded-full border border-[var(--lf-line)] bg-white px-5 py-3 text-sm font-semibold text-[var(--lf-ink)] transition hover:border-[var(--lf-purple)] hover:text-[var(--lf-purple)] sm:flex-none;
+}
+
+.section-title {
+  @apply text-xs font-semibold uppercase tracking-[0.2em] text-[var(--lf-purple)];
+}
