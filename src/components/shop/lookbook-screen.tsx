@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
-import { formatNgn, landingMedia, lookbookShopProducts, site } from "@/lib/site";
+import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
+import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
-import { WishlistHeart } from "./wishlist-heart";
+import { landingMedia, lookbookShopProducts, site } from "@/lib/site";
 
 const SWATCHES = ["#2d2d2d", "#8b7355", "#c4a574"] as const;
 
@@ -98,7 +99,7 @@ export function LookbookScreen() {
                         <p className="min-w-0 text-[11px] font-semibold uppercase leading-snug tracking-wide text-[var(--lf-ink)] line-clamp-2">
                           {p.name.toUpperCase()}
                         </p>
-                        <p className="shrink-0 text-xs font-semibold text-[var(--lf-ink)]">{formatNgn(p.price)}</p>
+                        <CatalogPriceStack product={p} />
                       </div>
                       <p className="text-xs text-[var(--lf-muted)]">{p.tag}</p>
                       <div className="flex gap-1 pt-1">

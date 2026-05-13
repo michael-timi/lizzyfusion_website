@@ -257,7 +257,7 @@ export function ContactUsView() {
         href={whatsappHref(`Hello ${site.name}, I have a quick question from your website.`)}
         target="_blank"
         rel="noreferrer"
-        className="fixed bottom-6 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-sm bg-[var(--lf-purple-deep)] text-white shadow-lg transition hover:bg-[var(--lf-purple)] sm:bottom-8 sm:right-8"
+        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-40 flex h-14 w-14 items-center justify-center rounded-sm bg-[var(--lf-purple-deep)] text-white shadow-lg transition hover:bg-[var(--lf-purple)] sm:bottom-[max(2rem,env(safe-area-inset-bottom))] sm:right-[max(2rem,env(safe-area-inset-right))]"
         aria-label="Open WhatsApp chat"
       >
         <IconChat className="text-white" />

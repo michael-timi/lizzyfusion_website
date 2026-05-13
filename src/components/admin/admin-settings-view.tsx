@@ -37,6 +37,40 @@ export function AdminSettingsView() {
       </section>
 
       <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-[var(--lf-ink)]">Catalogue hero (Gemini / Nano Banana 2)</h3>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--lf-muted)]">
+          “Add product” uses <code className="rounded bg-zinc-100 px-1 text-xs">/api/admin/catalog/suggest-from-hero</code> (Gemini vision,{" "}
+          <code className="rounded bg-zinc-100 px-1 text-xs">gemini-2.5-flash</code>) to prefill copy from the mannequin hero, and optionally{" "}
+          <code className="rounded bg-zinc-100 px-1 text-xs">/api/admin/catalog/hero-image</code> to generate a new hero from an original garment
+          photo. Configure the server (e.g. <code className="rounded bg-zinc-100 px-1 text-xs">.env.local</code>):
+        </p>
+        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-[var(--lf-muted)]">
+          <li>
+            <code className="rounded bg-zinc-100 px-1 text-xs">GEMINI_API_KEY</code> — from{" "}
+            <a href="https://aistudio.google.com/apikey" className="font-semibold text-[var(--lf-purple)] underline">
+              Google AI Studio → API keys
+            </a>
+            .
+          </li>
+          <li>
+            <code className="rounded bg-zinc-100 px-1 text-xs">FIREBASE_SERVICE_ACCOUNT_JSON</code> (one-line JSON) or{" "}
+            <code className="rounded bg-zinc-100 px-1 text-xs">FIREBASE_SERVICE_ACCOUNT_PATH</code> (absolute path to the downloaded{" "}
+            <code className="rounded bg-zinc-100 px-1 text-xs">.json</code>) — same service account as Firebase → Project settings → Service
+            accounts. Server-only: verify ID token + read <code className="rounded bg-zinc-100 px-1 text-xs">users/{`{uid}`}</code> for{" "}
+            <code className="rounded bg-zinc-100 px-1 text-xs">userType: admin</code>.
+          </li>
+          <li>
+            <strong className="text-[var(--lf-ink)]">Quotas:</strong> image models have strict free-tier limits. If you see rate limit or 429
+            errors, wait and retry, check usage in AI Studio, or enable billing / a paid tier — see{" "}
+            <a href="https://ai.google.dev/gemini-api/docs/rate-limits" className="font-semibold text-[var(--lf-purple)] underline">
+              rate limits
+            </a>
+            .
+          </li>
+        </ul>
+      </section>
+
+      <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-[var(--lf-ink)]">Admin access</h3>
         <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-[var(--lf-muted)]">
           <li>Sign in with Firebase Auth (Google or email).</li>

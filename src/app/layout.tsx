@@ -43,6 +43,7 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -62,8 +63,16 @@ export default function RootLayout({
         className="flex min-h-full flex-col bg-white text-[var(--lf-ink)]"
       >
         <Providers>
+          <a
+            href="#main-content"
+            className="fixed left-4 top-4 z-[200] -translate-y-24 rounded-md bg-white px-4 py-3 text-sm font-semibold text-[var(--lf-ink)] shadow-lg opacity-0 pointer-events-none transition focus:translate-y-0 focus:opacity-100 focus:pointer-events-auto focus:outline-none focus:ring-2 focus:ring-[var(--lf-purple)]"
+          >
+            Skip to main content
+          </a>
           <SiteHeader />
-          <div className="flex-1">{children}</div>
+          <div id="main-content" tabIndex={-1} className="flex-1 min-w-0 outline-none">
+            {children}
+          </div>
           <SiteFooter />
         </Providers>
       </body>

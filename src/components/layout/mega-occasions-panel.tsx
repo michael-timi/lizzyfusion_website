@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { formatNgn, getSampleProductBySlug, landingMedia, site } from "@/lib/site";
+import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
+import { getSampleProductBySlug, landingMedia, site } from "@/lib/site";
 
 /** Modimal-style olive for Occasions mega only (Image 1 reference). */
 const oliveBar =
@@ -66,7 +67,7 @@ function MiniProductCard({ slug, badge }: { slug: string; badge?: "New" | "Resto
         <div className="p-3 sm:p-4">
           <div className="flex items-start justify-between gap-2">
             <p className="min-w-0 text-sm font-semibold text-[var(--lf-ink)] line-clamp-2">{p.name}</p>
-            <p className="shrink-0 text-sm font-semibold text-[var(--lf-ink)]">{formatNgn(p.price)}</p>
+            <CatalogPriceStack product={p} />
           </div>
           <p className="mt-1 text-xs text-[var(--lf-muted)]">{p.tag}</p>
           <div className="mt-2 flex gap-1">

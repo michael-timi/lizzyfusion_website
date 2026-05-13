@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "NEXT_TELEMETRY_DISABLED=1 next dev -H localhost --turbopack",
+    "dev:webpack": "NEXT_TELEMETRY_DISABLED=1 next dev -H localhost --webpack",
+    "dev:trace": "NEXT_TELEMETRY_DISABLED=1 NEXT_TURBOPACK_TRACING=1 next dev -H localhost --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -11,7 +13,9 @@
     "seed:blog": "node scripts/seed-blog.mjs"
   },
   "dependencies": {
+    "@google/genai": "^1.52.0",
     "firebase": "^12.13.0",
+    "firebase-admin": "^13.9.0",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -23,7 +27,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
-    "firebase-admin": "^13.9.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.4"

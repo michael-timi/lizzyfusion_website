@@ -7,7 +7,7 @@ import { useFirebaseAuth } from "@/components/auth/firebase-auth-provider";
 import { sanitizeNextParam } from "@/lib/auth-redirect";
 import { signOutUser } from "@/lib/firebase-auth";
 
-const linkClass = "hover:text-white";
+const linkClass = "block rounded-md py-2.5 text-left text-sm transition hover:bg-white/5 hover:text-white";
 
 export function FooterAuthLinks() {
   const pathname = usePathname();
@@ -43,7 +43,7 @@ export function FooterAuthLinks() {
         <li>
           <button
             type="button"
-            className={`text-left text-sm ${linkClass} disabled:opacity-50`}
+            className={`w-full rounded-md py-2.5 text-left text-sm transition hover:bg-white/5 hover:text-white disabled:opacity-50`}
             disabled={signOutPending}
             onClick={() => {
               void (async () => {

@@ -232,7 +232,7 @@ export function StoreHeaderNav() {
           <div className="flex items-center gap-3 lg:justify-start">
             <button
               type="button"
-              className="rounded-md p-2 text-[var(--lf-ink)] lg:hidden"
+              className="flex h-11 min-w-11 items-center justify-center rounded-md text-[var(--lf-ink)] lg:hidden"
               aria-expanded={mobileOpen}
               aria-controls="mobile-drawer"
               onClick={() => setMobileOpen(true)}
@@ -267,7 +267,7 @@ export function StoreHeaderNav() {
                 onMouseEnter={() => {
                   if (!searchOpen) setMegaOpenId(item.id);
                 }}
-                className={`inline-flex items-center gap-1 py-2 text-sm font-medium transition hover:text-[var(--lf-purple)] ${megaOpenId === item.id ? "text-[var(--lf-purple)]" : "text-[var(--lf-ink)]"}`}
+                className={`inline-flex items-center gap-1 py-2.5 text-sm font-medium transition hover:text-[var(--lf-purple)] md:py-3 ${megaOpenId === item.id ? "text-[var(--lf-purple)]" : "text-[var(--lf-ink)]"}`}
               >
                 {item.label}
               </Link>
@@ -278,7 +278,7 @@ export function StoreHeaderNav() {
             {searchOpen ? (
               <button
                 type="button"
-                className="rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100"
+                className="flex h-11 min-w-11 items-center justify-center rounded-md text-[var(--lf-ink)] hover:bg-zinc-100"
                 aria-label="Close search"
                 onClick={() => setSearchOpen(false)}
               >
@@ -287,7 +287,7 @@ export function StoreHeaderNav() {
             ) : (
               <button
                 type="button"
-                className="rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100"
+                className="flex h-11 min-w-11 items-center justify-center rounded-md text-[var(--lf-ink)] hover:bg-zinc-100"
                 aria-label="Open search"
                 onClick={() => {
                   setSearchOpen(true);
@@ -310,7 +310,7 @@ export function StoreHeaderNav() {
             <div ref={accountWrapRef} className="relative">
               <button
                 type="button"
-                className={`relative rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100 ${
+                className={`relative flex h-11 min-w-11 items-center justify-center rounded-md text-[var(--lf-ink)] hover:bg-zinc-100 ${
                   user && isAdmin
                     ? "text-amber-950 ring-2 ring-amber-500/90 ring-offset-1 ring-offset-white"
                     : user
@@ -423,7 +423,7 @@ export function StoreHeaderNav() {
             </div>
             <Link
               href="/wishlist"
-              className={`relative hidden rounded-md p-2 sm:block ${
+              className={`relative hidden h-11 min-w-11 items-center justify-center rounded-md sm:inline-flex ${
                 wishlistCount > 0
                   ? "text-red-600 hover:bg-red-50 hover:text-red-700"
                   : "text-[var(--lf-ink)] hover:bg-zinc-100"
@@ -441,7 +441,7 @@ export function StoreHeaderNav() {
             </Link>
             <button
               type="button"
-              className="relative rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100"
+              className="relative flex h-11 min-w-11 items-center justify-center rounded-md text-[var(--lf-ink)] hover:bg-zinc-100"
               aria-label={cartCount > 0 ? `Shopping bag, ${cartCount} items` : "Open shopping bag"}
               onClick={() => {
                 setSearchOpen(false);
@@ -493,7 +493,7 @@ export function StoreHeaderNav() {
               {query ? (
                 <button
                   type="button"
-                  className="shrink-0 rounded-md p-2 text-zinc-500 hover:bg-zinc-100 hover:text-[var(--lf-ink)]"
+                  className="flex h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-[var(--lf-ink)]"
                   aria-label="Clear search"
                   onClick={() => setQuery("")}
                 >
@@ -524,7 +524,7 @@ export function StoreHeaderNav() {
                 </span>
                 <button
                   type="button"
-                  className="rounded-md p-2"
+                  className="flex h-11 min-w-11 items-center justify-center rounded-md text-[var(--lf-ink)]"
                   onClick={() => setMobileOpen(false)}
                   aria-label="Close"
                 >

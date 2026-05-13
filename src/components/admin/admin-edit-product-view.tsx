@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { deleteDoc, doc, getDoc, setDoc } from "firebase/firestore";
 import type { CatalogProduct } from "@/lib/catalog";
 import { uploadCatalogProductHeroImage } from "@/lib/catalog-product-image-upload";
+import { AdminFormErrorBanner } from "@/components/admin/admin-form-error-banner";
 import { useFirebaseAuth } from "@/components/auth/firebase-auth-provider";
 import { getFirebaseDb } from "@/lib/firebase-db";
 import { getFirebaseStorage } from "@/lib/firebase-storage";
@@ -27,12 +28,22 @@ export function AdminEditProductView({ catalogSlug }: Props) {
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
   const [priceStr, setPriceStr] = useState("");
+  const [compareAtStr, setCompareAtStr] = useState("");
   const [lead, setLead] = useState("");
   const [description, setDescription] = useState("");
   const [imageMode, setImageMode] = useState<ImageMode>("url");
   const [image, setImage] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+
+  const [galleryControlled, setGalleryControlled] = useState(false);
+  const [galleryLines, setGalleryLines] = useState("");
+  const [fittingNotes, setFittingNotes] = useState("");
+  const [fabricCareNotes, setFabricCareNotes] = useState("");
+  const [shippingNotes, setShippingNotes] = useState("");
+  const [craftFabricNotes, setCraftFabricNotes] = useState("");
+  const [craftFabricLabelsInput, setCraftFabricLabelsInput] = useState("");
+  const [colourAvailabilityNotes, setColourAvailabilityNotes] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -72,11 +83,33 @@ export function AdminEditProductView({ catalogSlug }: Props) {
         setName(typeof data.name === "string" ? data.name : "");
         setTag(typeof data.tag === "string" ? data.tag : "");
         setPriceStr(typeof data.price === "number" && Number.isFinite(data.price) ? String(data.price) : "");
+        setCompareAtStr(
+          typeof data.compareAtPrice === "number" && Number.isFinite(data.compareAtPrice)
+            ? String(Math.round(data.compareAtPrice))
+            : "",
+        );
         setLead(typeof data.lead === "string" ? data.lead : "");
         setDescription(typeof data.description === "string" ? data.description : "");
         setImage(typeof data.image === "string" ? data.image : "");
         setImageMode("url");
         setImageFile(null);
+
+        const hasGalleryKey = "galleryImageUrls" in data && data.galleryImageUrls !== undefined;
+        setGalleryControlled(hasGalleryKey);
+        setGalleryLines(
+          Array.isArray(data.galleryImageUrls) ? data.galleryImageUrls.filter((u) => typeof u === "string").join("\n") : "",
+        );
+        setFittingNotes(typeof data.fittingNotes === "string" ? data.fittingNotes : "");
+        setFabricCareNotes(typeof data.fabricCareNotes === "string" ? data.fabricCareNotes : "");
+        setShippingNotes(typeof data.shippingNotes === "string" ? data.shippingNotes : "");
+        setCraftFabricNotes(typeof data.craftFabricNotes === "string" ? data.craftFabricNotes : "");
+        setColourAvailabilityNotes(typeof data.colourAvailabilityNotes === "string" ? data.colourAvailabilityNotes : "");
+        setCraftFabricLabelsInput(
+          Array.isArray(data.craftFabricLabels)
+            ? data.craftFabricLabels.filter((x) => typeof x === "string").join(", ")
+            : "",
+        );
+
         setLoadState("ready");
       });
     })();
@@ -104,6 +137,19 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       return;
     }
 
+    let compareAtPrice: number | undefined;
+    const compareRaw = compareAtStr.trim().replace(/,/g, "");
+    if (compareRaw.length > 0) {
+      const cap = Math.round(Number(compareRaw));
+      if (!Number.isFinite(cap) || cap <= price) {
+        setError(
+          "Compare-at price (optional) must be a whole Naira amount strictly greater than the current price, or leave it blank.",
+        );
+        return;
+      }
+      compareAtPrice = cap;
+    }
+
     if (!name.trim() || !tag.trim() || !lead.trim() || !description.trim()) {
       setError("Name, collection tag, lead time, and description are required.");
       return;
@@ -122,17 +168,55 @@ export function AdminEditProductView({ catalogSlug }: Props) {
         return;
       }
 
-      const payload: CatalogProduct = {
-        slug: catalogSlug,
-        name: name.trim(),
-        tag: tag.trim(),
-        price,
-        lead: lead.trim(),
-        description: description.trim(),
-        image: img,
-      };
+      const ref = doc(db, "catalog_products", catalogSlug);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        setError("Product document disappeared. Reload the page.");
+        return;
+      }
+      const prev = snap.data() as Record<string, unknown>;
+      const next: Record<string, unknown> = { ...prev };
 
-      await setDoc(doc(db, "catalog_products", catalogSlug), payload);
+      next.slug = catalogSlug;
+      next.name = name.trim();
+      next.tag = tag.trim();
+      next.price = price;
+      if (compareAtPrice !== undefined) next.compareAtPrice = compareAtPrice;
+      else delete next.compareAtPrice;
+      next.lead = lead.trim();
+      next.description = description.trim();
+      next.image = img;
+
+      if (galleryControlled) {
+        const lines = galleryLines
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l.startsWith("https://"))
+          .slice(0, 6);
+        next.galleryImageUrls = lines;
+      } else {
+        delete next.galleryImageUrls;
+      }
+
+      const setOptionalString = (key: string, val: string) => {
+        if (val.trim()) next[key] = val.trim();
+        else delete next[key];
+      };
+      setOptionalString("fittingNotes", fittingNotes);
+      setOptionalString("fabricCareNotes", fabricCareNotes);
+      setOptionalString("shippingNotes", shippingNotes);
+      setOptionalString("craftFabricNotes", craftFabricNotes);
+      setOptionalString("colourAvailabilityNotes", colourAvailabilityNotes);
+
+      const labels = craftFabricLabelsInput
+        .split(/[\n,]+/)
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .slice(0, 8);
+      if (labels.length) next.craftFabricLabels = labels;
+      else delete next.craftFabricLabels;
+
+      await setDoc(ref, next as CatalogProduct);
       setImage(img);
       setImageFile(null);
       setImageMode("url");
@@ -195,14 +279,14 @@ export function AdminEditProductView({ catalogSlug }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className={`mx-auto max-w-2xl space-y-8 ${error ? "pb-28 sm:pb-8" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">Edit catalogue product</h2>
           <p className="mt-1 font-mono text-xs text-[var(--lf-muted)]">catalog_products/{catalogSlug}</p>
           <p className="mt-2 text-sm text-[var(--lf-muted)]">
-            Slug and document id stay fixed. Update copy, price, or image; matching storefront PDP refreshes on next
-            request.
+            Update core fields, hero image, gallery URLs, and PDP copy. Saving merges with the existing Firestore document
+            (including <code className="rounded bg-zinc-100 px-0.5 text-xs">sourceImage</code> from the add-product flow).
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -218,12 +302,6 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       {savedAt ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-900">
           Changes saved.
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900" role="alert">
-          {error}
         </div>
       ) : null}
 
@@ -264,6 +342,26 @@ export function AdminEditProductView({ catalogSlug }: Props) {
         </div>
 
         <div>
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="ep-compare-at"
+          >
+            Compare-at price (₦, optional)
+          </label>
+          <input
+            id="ep-compare-at"
+            className={`${inputClass} mt-1.5`}
+            inputMode="numeric"
+            value={compareAtStr}
+            onChange={(e) => setCompareAtStr(e.target.value)}
+            placeholder="Leave blank when not on sale"
+          />
+          <p className="mt-1 text-xs text-[var(--lf-muted)]">
+            Must be strictly greater than the price above, or leave blank to clear a promo.
+          </p>
+        </div>
+
+        <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ep-lead">
             Lead time / fulfilment note
           </label>
@@ -282,6 +380,115 @@ export function AdminEditProductView({ catalogSlug }: Props) {
             required
           />
         </div>
+
+        <fieldset className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/40 p-4">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
+            Storefront product page
+          </legend>
+
+          <label className="flex cursor-pointer items-start gap-2 text-sm text-[var(--lf-ink)]">
+            <input
+              type="checkbox"
+              className="mt-1 accent-[var(--lf-purple-deep)]"
+              checked={galleryControlled}
+              onChange={(e) => setGalleryControlled(e.target.checked)}
+            />
+            <span>
+              <span className="font-medium">Control gallery manually</span>
+              <span className="mt-0.5 block text-xs font-normal text-[var(--lf-muted)]">
+                When on, the list below (or an empty list) defines thumbnails—no auto lookbook filler. When off, the site
+                pads the gallery the legacy way.
+              </span>
+            </span>
+          </label>
+
+          <div>
+            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-gallery-lines">
+              Extra gallery image URLs (one https URL per line, max 6)
+            </label>
+            <textarea
+              id="ep-gallery-lines"
+              className={`${inputClass} mt-1.5 min-h-[100px] resize-y font-mono text-xs`}
+              value={galleryLines}
+              onChange={(e) => setGalleryLines(e.target.value)}
+              disabled={!galleryControlled}
+              placeholder="https://…"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-colour-notes">
+              Colours / fabric availability (optional)
+            </label>
+            <textarea
+              id="ep-colour-notes"
+              className={`${inputClass} mt-1.5 min-h-[72px] resize-y`}
+              value={colourAvailabilityNotes}
+              onChange={(e) => setColourAvailabilityNotes(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-fitting">
+              Fitting section (optional)
+            </label>
+            <textarea
+              id="ep-fitting"
+              className={`${inputClass} mt-1.5 min-h-[72px] resize-y`}
+              value={fittingNotes}
+              onChange={(e) => setFittingNotes(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-fabric">
+              Fabric & care (optional)
+            </label>
+            <textarea
+              id="ep-fabric"
+              className={`${inputClass} mt-1.5 min-h-[72px] resize-y`}
+              value={fabricCareNotes}
+              onChange={(e) => setFabricCareNotes(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-shipping">
+              Shipping & returns (optional)
+            </label>
+            <textarea
+              id="ep-shipping"
+              className={`${inputClass} mt-1.5 min-h-[72px] resize-y`}
+              value={shippingNotes}
+              onChange={(e) => setShippingNotes(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-craft-body">
+              Craft & fabric — main paragraph (optional)
+            </label>
+            <textarea
+              id="ep-craft-body"
+              className={`${inputClass} mt-1.5 min-h-[88px] resize-y`}
+              value={craftFabricNotes}
+              onChange={(e) => setCraftFabricNotes(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-craft-labels">
+              Craft & fabric — chip labels (optional)
+            </label>
+            <textarea
+              id="ep-craft-labels"
+              className={`${inputClass} mt-1.5 min-h-[56px] resize-y`}
+              value={craftFabricLabelsInput}
+              onChange={(e) => setCraftFabricLabelsInput(e.target.value)}
+              placeholder="Comma or newline separated"
+            />
+          </div>
+        </fieldset>
 
         <fieldset className="space-y-3">
           <legend className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">Product image</legend>
@@ -396,6 +603,8 @@ export function AdminEditProductView({ catalogSlug }: Props) {
           </button>
         </div>
       </form>
+
+      <AdminFormErrorBanner message={error} onDismiss={() => setError(null)} />
     </div>
   );
 }

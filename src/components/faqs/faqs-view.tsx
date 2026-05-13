@@ -94,7 +94,7 @@ export function FaqsView() {
         href={waFloat}
         target="_blank"
         rel="noreferrer"
-        className="fixed bottom-6 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-sm text-white shadow-lg transition hover:opacity-90 sm:bottom-8 sm:right-8"
+        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-40 flex h-14 w-14 items-center justify-center rounded-sm text-white shadow-lg transition hover:opacity-90 sm:bottom-[max(2rem,env(safe-area-inset-bottom))] sm:right-[max(2rem,env(safe-area-inset-right))]"
         style={{ backgroundColor: craftCareOlive }}
         aria-label="Open WhatsApp chat"
       >

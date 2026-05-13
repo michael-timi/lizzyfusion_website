@@ -1,17 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import { useMemo, useState } from "react";
-import { formatNgn, site, whatsappHref } from "@/lib/site";
+import { catalogWhatsappPriceLine, type CatalogPricePick } from "@/lib/catalog-pricing";
+import { site, whatsappHref } from "@/lib/site";
 import { ProductFilters, type SortKey } from "./product-filters";
 import { WishlistHeart } from "./wishlist-heart";
 
-type Product = {
+type Product = CatalogPricePick & {
   slug: string;
   name: string;
   tag: string;
-  price: number;
   lead: string;
   image: string;
 };
@@ -44,7 +45,7 @@ function ShopProductGrid({ products }: { products: Product[] }) {
             [
               `*${site.name} — product enquiry*`,
               `Product: ${p.name}`,
-              `Listed price: ${formatNgn(p.price)}`,
+              catalogWhatsappPriceLine(p),
               `My name / size / colour preference:`,
               `(please fill before sending)`,
             ].join("\n"),
@@ -83,7 +84,7 @@ function ShopProductGrid({ products }: { products: Product[] }) {
                     </Link>
                     <p className="mt-0.5 text-sm text-[var(--lf-muted)]">{p.tag}</p>
                   </div>
-                  <p className="shrink-0 text-sm font-semibold text-[var(--lf-ink)]">{formatNgn(p.price)}</p>
+                  <CatalogPriceStack product={p} />
                 </div>
                 <div className="mt-3 flex gap-1.5">
                   {["#2d2d2d", "#8b7355", "#c4a574"].map((hex) => (

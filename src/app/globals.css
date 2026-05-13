@@ -1,4 +1,33 @@
-@import "tailwindcss";
+/* Limit class scanning to `src/` (default is repo root, including scripts/config). */
+@import "tailwindcss" source("..");
+
+@layer base {
+  html {
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    overflow-x: clip;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  :where(a, button, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--lf-purple);
+    outline-offset: 2px;
+  }
+
+  :where(input, textarea, select):focus-visible {
+    outline: 2px solid var(--lf-purple);
+    outline-offset: 0;
+  }
+}
 
 :root {
   --lf-ink: #3f3f3f;
