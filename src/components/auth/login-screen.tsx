@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import { sanitizeNextParam } from "@/lib/auth-redirect";
+import { AuthErrorBanner, AuthNoticeBanner, AuthSuccessBanner } from "@/components/auth/auth-feedback";
 import { firebaseAuthErrorMessage, signInWithEmailPassword, signInWithGoogle } from "@/lib/firebase-auth";
 import { landingMedia, site } from "@/lib/site";
 import { AuthSocialSection } from "./auth-social-section";
 import { useFirebaseAuth } from "./firebase-auth-provider";
+
+const REDIRECT_MS = 900;
 
 function IconEye({ crossed }: { crossed?: boolean }) {
   if (crossed) {
@@ -45,9 +48,12 @@ export function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [info, setInfo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googlePending, setGooglePending] = useState(false);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const afterLoginPath = useMemo(
     () => sanitizeNextParam(searchParams.get("next")),
@@ -60,48 +66,75 @@ export function LoginScreen() {
       : "/register";
   }, [afterLoginPath]);
 
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current != null) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  function clearFeedback() {
+    setError(null);
+    setNotice(null);
+    setSuccessMessage(null);
+  }
+
+  function scheduleRedirect() {
+    if (redirectTimerRef.current != null) clearTimeout(redirectTimerRef.current);
+    redirectTimerRef.current = setTimeout(() => {
+      redirectTimerRef.current = null;
+      router.replace(afterLoginPath);
+    }, REDIRECT_MS);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setInfo(null);
+    clearFeedback();
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setInfo("Please enter the email you registered with.");
+      setError("Please enter the email you registered with.");
       return;
     }
     if (password.length < 1) {
-      setInfo("Please enter your password.");
+      setError("Please enter your password.");
       return;
     }
     if (!configured) {
-      setInfo("Sign-in is not configured yet. Add Firebase keys to .env.local and restart the dev server.");
+      setNotice("Sign-in is not configured yet. Add Firebase keys to .env.local and restart the dev server.");
       return;
     }
     setSubmitting(true);
     try {
       await signInWithEmailPassword(email, password);
-      router.replace(afterLoginPath);
+      setSuccessMessage("Signed in successfully. Redirecting…");
+      scheduleRedirect();
     } catch (err) {
-      setInfo(firebaseAuthErrorMessage(err));
+      setError(firebaseAuthErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleGoogle() {
-    setInfo(null);
+    clearFeedback();
     if (!configured) {
-      setInfo("Sign-in is not configured yet. Add Firebase keys to .env.local and restart the dev server.");
+      setNotice("Sign-in is not configured yet. Add Firebase keys to .env.local and restart the dev server.");
       return;
     }
     setGooglePending(true);
     try {
       await signInWithGoogle();
-      router.replace(afterLoginPath);
+      setSuccessMessage("Signed in with Google. Redirecting…");
+      scheduleRedirect();
     } catch (err) {
-      setInfo(firebaseAuthErrorMessage(err));
+      setError(firebaseAuthErrorMessage(err));
     } finally {
       setGooglePending(false);
     }
   }
+
+  const formLocked = submitting || Boolean(successMessage);
 
   return (
     <>
@@ -140,6 +173,7 @@ export function LoginScreen() {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={formLocked}
               className={fieldClass}
             />
             <div className="relative">
@@ -150,12 +184,14 @@ export function LoginScreen() {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={formLocked}
                 className={`${fieldClass} pr-12`}
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1.5 hover:bg-zinc-100"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1.5 hover:bg-zinc-100 disabled:opacity-40"
                 onClick={() => setShowPassword((v) => !v)}
+                disabled={formLocked}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 <IconEye crossed={showPassword} />
@@ -171,31 +207,32 @@ export function LoginScreen() {
               </Link>
             </div>
 
-            {info ? (
-              <p className="text-sm leading-relaxed text-[var(--lf-muted)]" role="status">
-                {info}
-              </p>
-            ) : null}
+            <div className="space-y-3">
+              {successMessage ? <AuthSuccessBanner>{successMessage}</AuthSuccessBanner> : null}
+              {error ? <AuthErrorBanner>{error}</AuthErrorBanner> : null}
+              {notice ? <AuthNoticeBanner>{notice}</AuthNoticeBanner> : null}
+            </div>
 
             <button
               type="submit"
-              disabled={submitting}
-              className="mt-1 w-full bg-[var(--lf-purple)] py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple-deep)] disabled:opacity-60"
+              disabled={formLocked}
+              className="mt-1 w-full bg-[var(--lf-purple)] py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple-deep)] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? "Signing in…" : "Log in"}
+              {submitting ? "Signing in…" : successMessage ? "Redirecting…" : "Log in"}
             </button>
           </form>
 
           <AuthSocialSection
             className="mt-10"
             google={
-              configured
+              configured && !successMessage
                 ? {
                     onClick: handleGoogle,
                     pending: googlePending,
                   }
                 : undefined
             }
+            pendingHint="Signing in with Google…"
           />
 
           <p className="mx-auto mt-10 max-w-md text-center text-sm text-[var(--lf-muted)]">

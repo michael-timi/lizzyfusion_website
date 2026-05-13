@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { firebaseAuthErrorMessage, sendPasswordReset } from "@/lib/firebase-auth";
+import { AuthErrorBanner, AuthNoticeBanner, AuthSuccessBanner } from "@/components/auth/auth-feedback";
 import { useFirebaseAuth } from "@/components/auth/firebase-auth-provider";
+import { firebaseAuthErrorMessage, sendPasswordReset } from "@/lib/firebase-auth";
 import { site } from "@/lib/site";
 
 const fieldClass =
@@ -16,18 +17,20 @@ export function ForgotPasswordScreen() {
   const [email, setEmail] = useState(() => searchParams.get("email") ?? "");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus(null);
     setError(null);
+    setNotice(null);
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Enter the email you use for your account.");
       return;
     }
     if (!configured) {
-      setError("Password reset is not available until Firebase is configured (.env.local).");
+      setNotice("Password reset is not available until Firebase is configured (.env.local).");
       return;
     }
     setPending(true);
@@ -62,12 +65,9 @@ export function ForgotPasswordScreen() {
           onChange={(e) => setEmail(e.target.value)}
           className={fieldClass}
         />
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        {status ? (
-          <p className="text-sm leading-relaxed text-[var(--lf-muted)]" role="status">
-            {status}
-          </p>
-        ) : null}
+        {status ? <AuthSuccessBanner>{status}</AuthSuccessBanner> : null}
+        {error ? <AuthErrorBanner>{error}</AuthErrorBanner> : null}
+        {notice ? <AuthNoticeBanner>{notice}</AuthNoticeBanner> : null}
         <button
           type="submit"
           disabled={pending}

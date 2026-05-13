@@ -31,10 +31,16 @@ export async function signInWithGoogle(): Promise<User> {
   return user;
 }
 
+/** Dispatched on `window` after `signOutUser()` completes (browser only). */
+export const LF_SIGNED_OUT_EVENT = "lf-signed-out";
+
 export async function signOutUser(): Promise<void> {
   const auth = getFirebaseAuth();
   if (!auth) return;
   await signOut(auth);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(LF_SIGNED_OUT_EVENT));
+  }
 }
 
 export async function signInWithEmailPassword(email: string, password: string): Promise<User> {

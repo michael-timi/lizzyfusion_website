@@ -4,9 +4,12 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
+import { useFirebaseAuth } from "@/components/auth/firebase-auth-provider";
 import { CartDrawer, useCartItemCount } from "@/components/layout/cart-drawer";
 import { useWishlistCount } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
+import { sanitizeNextParam } from "@/lib/auth-redirect";
+import { signOutUser } from "@/lib/firebase-auth";
 import { IconHeart } from "@/components/ui/icon-heart";
 import { landingMedia, nav, navStorefront, shopHrefForSpecialty, site } from "@/lib/site";
 
@@ -128,12 +131,22 @@ export function StoreHeaderNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [signOutPending, setSignOutPending] = useState(false);
+  const accountWrapRef = useRef<HTMLDivElement | null>(null);
   const cartCount = useCartItemCount();
   const wishlistCount = useWishlistCount();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { user, loading, configured, isAdmin, profileLoading } = useFirebaseAuth();
+
+  const nextHref = sanitizeNextParam(
+    pathname + (searchParams.toString() ? `?${searchParams.toString()}` : ""),
+  );
+  const loginHref = `/login?next=${encodeURIComponent(nextHref)}`;
+  const registerHref = `/register?next=${encodeURIComponent(nextHref)}`;
+  const [query, setQuery] = useState("");
 
   const [megaOpenId, setMegaOpenId] = useState<string | null>(null);
   const megaCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -166,6 +179,23 @@ export function StoreHeaderNav() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = accountWrapRef.current;
+      if (el && !el.contains(e.target as Node)) setAccountOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAccountOpen(false);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [accountOpen]);
 
   const catLinks = site.specialties.slice(0, 8).map((label) => ({
     label,
@@ -269,13 +299,110 @@ export function StoreHeaderNav() {
                 <IconSearch />
               </button>
             )}
-            <Link
-              href="/register"
-              className="hidden rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100 sm:block"
-              aria-label="Create account"
-            >
-              <IconUser />
-            </Link>
+            <div ref={accountWrapRef} className="relative">
+              <button
+                type="button"
+                className={`relative rounded-md p-2 text-[var(--lf-ink)] hover:bg-zinc-100 ${
+                  user && isAdmin
+                    ? "text-amber-950 ring-2 ring-amber-500/90 ring-offset-1 ring-offset-white"
+                    : user
+                      ? "text-[var(--lf-purple)]"
+                      : ""
+                }`}
+                aria-busy={loading || (Boolean(user) && profileLoading)}
+                aria-haspopup="menu"
+                aria-label={
+                  user
+                    ? isAdmin
+                      ? `Administrator signed in as ${user.email ?? "member"}. Account menu`
+                      : `Signed in as ${user.email ?? "member"}. Account menu`
+                    : "Account menu"
+                }
+                onClick={() => setAccountOpen((o) => !o)}
+              >
+                <IconUser />
+                {user && !isAdmin ? (
+                  <span
+                    className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--lf-purple)] ring-2 ring-white"
+                    aria-hidden
+                  />
+                ) : null}
+                {user && isAdmin ? (
+                  <span
+                    className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-600 ring-2 ring-white"
+                    aria-hidden
+                  />
+                ) : null}
+              </button>
+              {accountOpen ? (
+                <div
+                  className="absolute right-0 z-[120] mt-1 w-[min(18rem,calc(100vw-2rem))] border border-[var(--lf-line)] bg-white py-2 text-sm shadow-lg"
+                  role="menu"
+                >
+                  {loading ? (
+                    <p className="px-3 py-2 text-[var(--lf-muted)]">Checking session…</p>
+                  ) : user ? (
+                    <>
+                      <p className="border-b border-zinc-100 px-3 py-2 text-xs text-[var(--lf-muted)]">Signed in</p>
+                      {isAdmin ? (
+                        <p className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-amber-950">
+                          Administrator
+                        </p>
+                      ) : null}
+                      <p className="truncate px-3 py-2 font-medium text-[var(--lf-ink)]" title={user.email ?? undefined}>
+                        {user.email ?? user.displayName ?? "Member"}
+                      </p>
+                      <Link
+                        href="/checkout/info"
+                        role="menuitem"
+                        className="block px-3 py-2 text-[var(--lf-ink)] hover:bg-zinc-50"
+                        onClick={() => setAccountOpen(false)}
+                      >
+                        Checkout
+                      </Link>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="w-full px-3 py-2 text-left font-semibold text-[var(--lf-purple)] hover:bg-zinc-50 disabled:opacity-50"
+                        disabled={signOutPending}
+                        onClick={() => {
+                          void (async () => {
+                            setSignOutPending(true);
+                            try {
+                              await signOutUser();
+                              setAccountOpen(false);
+                            } finally {
+                              setSignOutPending(false);
+                            }
+                          })();
+                        }}
+                      >
+                        {signOutPending ? "Signing out…" : "Sign out"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href={loginHref}
+                        role="menuitem"
+                        className="block px-3 py-2 font-medium text-[var(--lf-ink)] hover:bg-zinc-50"
+                        onClick={() => setAccountOpen(false)}
+                      >
+                        Log in
+                      </Link>
+                      <Link
+                        href={registerHref}
+                        role="menuitem"
+                        className="block px-3 py-2 text-[var(--lf-ink)] hover:bg-zinc-50"
+                        onClick={() => setAccountOpen(false)}
+                      >
+                        Create account
+                      </Link>
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </div>
             <Link
               href="/wishlist"
               className={`relative hidden rounded-md p-2 sm:block ${
@@ -409,6 +536,70 @@ export function StoreHeaderNav() {
                 >
                   Wish list{wishlistCount > 0 ? ` (${wishlistCount})` : ""}
                 </Link>
+                <p className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
+                  Account
+                </p>
+                {loading ? (
+                  <p className="border-b border-zinc-100 py-3 text-sm text-[var(--lf-muted)]">Checking session…</p>
+                ) : !configured ? (
+                  <p className="border-b border-zinc-100 py-3 text-sm text-[var(--lf-muted)]">
+                    Sign-in is not configured on this build.
+                  </p>
+                ) : user ? (
+                  <>
+                    <p className="border-b border-zinc-100 py-2 text-xs text-[var(--lf-muted)]">Signed in</p>
+                    {isAdmin ? (
+                      <p className="border-b border-amber-200 bg-amber-50 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-amber-950">
+                        Administrator
+                      </p>
+                    ) : null}
+                    <p className="truncate border-b border-zinc-100 py-2 text-sm font-medium text-[var(--lf-ink)]">
+                      {user.email ?? user.displayName ?? "Member"}
+                    </p>
+                    <Link
+                      href="/checkout/info"
+                      className="block border-b border-zinc-100 py-3 text-sm font-medium"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      Checkout
+                    </Link>
+                    <button
+                      type="button"
+                      className="block w-full border-b border-zinc-100 py-3 text-left text-sm font-semibold text-[var(--lf-purple)] disabled:opacity-50"
+                      disabled={signOutPending}
+                      onClick={() => {
+                        void (async () => {
+                          setSignOutPending(true);
+                          try {
+                            await signOutUser();
+                            setMobileOpen(false);
+                          } finally {
+                            setSignOutPending(false);
+                          }
+                        })();
+                      }}
+                    >
+                      {signOutPending ? "Signing out…" : "Sign out"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href={loginHref}
+                      className="block border-b border-zinc-100 py-3 text-sm font-medium"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      Log in
+                    </Link>
+                    <Link
+                      href={registerHref}
+                      className="block border-b border-zinc-100 py-3 text-sm font-medium"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      Create account
+                    </Link>
+                  </>
+                )}
                 <button
                   type="button"
                   className="block w-full border-b border-zinc-100 py-3 text-left text-sm font-medium"

@@ -1,10 +1,10 @@
 import { site } from "@/lib/site";
 
-/** Editorial Craft & care hub + materials — imagery is placeholder until studio assets exist. */
+/** Editorial Craft & care hub + materials — women’s & children’s wear, fabrics, atelier (placeholder until studio assets exist). */
 export const craftCare = {
   hubHero: {
     image:
-      "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=2400&q=80&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?w=2400&q=80&auto=format&fit=crop",
     line: "Elegance in simplicity, earth’s harmony",
   },
   hubTitle: `Craft & care at ${site.name}`,
@@ -44,7 +44,7 @@ export const craftCare = {
       label: "Our story",
       href: "/about",
       image:
-        "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=900&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=900&q=80&auto=format&fit=crop",
     },
     {
       label: "Materials",
@@ -66,12 +66,12 @@ export const craftCare = {
     },
   ] as const,
   peopleCollage: [
-    "https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=600&q=80&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=600&q=80&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=600&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?w=600&q=80&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=600&q=80&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?w=600&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=600&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=600&q=80&auto=format&fit=crop",
   ] as const,
   packaging: {
     title: "Packaging",

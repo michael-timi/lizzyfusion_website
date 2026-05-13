@@ -18,7 +18,7 @@ export const site = {
   vision:
     "To embrace a harmonious blend of modesty, innovation and the synergy of classic styles, where each design narrates a story of timeless grace infused with contemporary flair. Redefine your style with Lizzy Fusion, where modesty meets the cutting edge of fashion.",
   mission: [
-    "At Lizzy Fusion, our mission is to empower individuals with a unique fusion of modesty and style, crafting fashion that transcends boundaries and celebrates diverse expressions of elegance.",
+    "At Lizzy Fusion, our mission is to empower women and children with a unique fusion of modesty and style, crafting fashion that transcends boundaries and celebrates diverse expressions of elegance.",
     "We strive to redefine the fashion landscape by seamlessly blending traditional modesty with avant-garde design, fostering confidence and self-expression. Committed to sustainability and ethical practices, we aim to leave a positive impact on both the fashion industry and the world, inspiring a new era of conscious and captivating style.",
   ],
   specialties: [
@@ -86,7 +86,7 @@ export const sampleProducts = [
     description:
       "Layered modest silhouette with a soft drape—ideal for receptions and elevated everyday. Pair with heels or flats; length and lining tweaks are guided in studio.",
     image:
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&q=80&auto=format&fit=crop&facepad=2",
+      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&q=80&auto=format&fit=crop",
   },
   {
     slug: "aso-ebi-set",
@@ -191,7 +191,7 @@ export const nav = [
 
 /** Hero + collection tiles — placeholder photography until studio shots exist. */
 export const landingMedia = {
-  hero: "https://images.unsplash.com/photo-1539008835657-9e8e9680c956?w=2400&q=85&auto=format&fit=crop",
+  hero: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=2400&q=85&auto=format&fit=crop",
   sustainability:
     "https://images.unsplash.com/photo-1585123334904-845d60e97b29?w=2000&q=80&auto=format&fit=crop",
   collectionTiles: [
@@ -199,7 +199,7 @@ export const landingMedia = {
       label: "Wedding & reception",
       href: "/shop/reception-full-length",
       image:
-        "https://images.unsplash.com/photo-1519741497674-611481863552?w=900&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1566174053879-435285fbf655?w=900&q=80&auto=format&fit=crop",
       span: "large" as const,
     },
     {
@@ -252,9 +252,9 @@ export const landingMedia = {
       caption: "Office modest",
       href: "/lookbook?day=Tuesday",
       image:
-        "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&q=80&auto=format&fit=crop",
       heroImage:
-        "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1400&q=85&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1400&q=85&auto=format&fit=crop",
       shopSlugs: ["office-modest-set", "church-shift-dress"] as const,
     },
     {
@@ -273,9 +273,9 @@ export const landingMedia = {
       caption: "Casual fusion",
       href: "/lookbook?day=Thursday",
       image:
-        "https://images.unsplash.com/photo-1469334031218-e382a71b764b?w=600&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&q=80&auto=format&fit=crop",
       heroImage:
-        "https://images.unsplash.com/photo-1469334031218-e382a71b764b?w=1400&q=85&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1400&q=85&auto=format&fit=crop",
       shopSlugs: ["everyday-wrap-dress", "signature-abaya-rtw"] as const,
     },
     {
@@ -303,13 +303,14 @@ export const landingMedia = {
   ],
   /** Split-panel register / login (lifestyle). */
   authPanel:
-    "https://images.unsplash.com/photo-1499951360447-b19be0e94e09?w=1400&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=1400&q=80&auto=format&fit=crop",
+  /** Women’s & children’s wear, fabrics — no accessories or menswear placeholders. */
   social: [
-    "https://images.unsplash.com/photo-1525507119028-ed4c629a60a6?w=600&q=80&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&q=80&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&q=80&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1469334031218-e382a71b764b?w=600&q=80&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=600&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=600&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=600&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=600&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&q=80&auto=format&fit=crop",
   ],
 } as const;
 

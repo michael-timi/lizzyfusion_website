@@ -50,10 +50,12 @@ type AuthSocialSectionProps = {
   className?: string;
   /** When set, the Google button runs Firebase Google sign-in / sign-up. */
   google?: AuthGoogleAction;
+  /** Shown under the row while Google sign-in is in progress (login / register). */
+  pendingHint?: string;
 };
 
 /** “Or” rule + Apple / Google / Facebook — matches register & login reference layout. */
-export function AuthSocialSection({ className = "", google }: AuthSocialSectionProps) {
+export function AuthSocialSection({ className = "", google, pendingHint = "Signing in with Google…" }: AuthSocialSectionProps) {
   const googlePending = Boolean(google?.pending);
   const googleDisabled = !google || googlePending;
 
@@ -65,7 +67,7 @@ export function AuthSocialSection({ className = "", google }: AuthSocialSectionP
         <span className="h-px flex-1 bg-[var(--lf-line)]" />
       </div>
 
-      <div className="mt-6 flex justify-center gap-4">
+      <div className="mt-6 flex justify-center gap-4" aria-busy={googlePending || undefined}>
         <button
           type="button"
           title="Apple sign-in coming soon"
@@ -84,6 +86,7 @@ export function AuthSocialSection({ className = "", google }: AuthSocialSectionP
           }}
           className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--lf-line)] bg-white transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Continue with Google"
+          aria-busy={googlePending}
         >
           <SocialGoogle />
         </button>
@@ -96,6 +99,12 @@ export function AuthSocialSection({ className = "", google }: AuthSocialSectionP
           <SocialFacebook />
         </button>
       </div>
+
+      {googlePending && pendingHint ? (
+        <p className="mt-4 text-center text-xs font-medium text-[var(--lf-muted)]" aria-live="polite">
+          {pendingHint}
+        </p>
+      ) : null}
     </div>
   );
 }

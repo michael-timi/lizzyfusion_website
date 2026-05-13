@@ -8,5 +8,30 @@ service cloud.firestore {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow update, delete: if false;
     }
+
+    // App-created profiles: clients may only create as `user` and cannot change `userType`.
+    // Set `userType` to `admin` via Firebase console or Admin SDK (bypasses these rules).
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.userId == userId
+        && request.resource.data.userType == 'user'
+        && userProfileEmailMatchesAuthToken();
+
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.userId == userId
+        && request.resource.data.userType == resource.data.userType
+        && userProfileEmailMatchesAuthToken();
+
+      allow delete: if false;
+    }
   }
+}
+
+function userProfileEmailMatchesAuthToken() {
+  return request.auth.token.email == null
+    || request.resource.data.email == request.auth.token.email;
 }

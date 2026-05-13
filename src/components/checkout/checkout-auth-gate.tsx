@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { AuthErrorBanner } from "@/components/auth/auth-feedback";
 import { useFirebaseAuth } from "@/components/auth/firebase-auth-provider";
 import { firebaseAuthErrorMessage, signInWithGoogle, signOutUser } from "@/lib/firebase-auth";
 import { site } from "@/lib/site";
@@ -81,9 +82,9 @@ export function CheckoutAuthGate({ children }: { children: React.ReactNode }) {
         </p>
 
         {error ? (
-          <p className="mt-6 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-center text-sm text-red-800">
-            {error}
-          </p>
+          <div className="mt-6 text-center">
+            <AuthErrorBanner>{error}</AuthErrorBanner>
+          </div>
         ) : null}
 
         <div className="mt-10 space-y-3">

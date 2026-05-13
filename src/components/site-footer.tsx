@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FooterAuthLinks } from "@/components/footer-auth-links";
 import { nav, site, whatsappHref } from "@/lib/site";
 
 export function SiteFooter() {
@@ -87,11 +88,7 @@ export function SiteFooter() {
                   Wish list
                 </Link>
               </li>
-              <li>
-                <Link href="/register" className="hover:text-white">
-                  Create account
-                </Link>
-              </li>
+              <FooterAuthLinks />
               <li>
                 <Link href="/custom" className="hover:text-white">
                   Custom & bespoke

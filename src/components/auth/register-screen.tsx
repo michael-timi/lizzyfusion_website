@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import { sanitizeNextParam } from "@/lib/auth-redirect";
+import { AuthErrorBanner, AuthNoticeBanner, AuthSuccessBanner } from "@/components/auth/auth-feedback";
 import { firebaseAuthErrorMessage, registerWithEmailPassword, signInWithGoogle } from "@/lib/firebase-auth";
 import { landingMedia, site } from "@/lib/site";
 import { AuthSocialSection } from "./auth-social-section";
 import { useFirebaseAuth } from "./firebase-auth-provider";
 import { VerifyEmailDialog } from "./verify-email-dialog";
 import { WelcomeAfterSignupDialog } from "./welcome-after-signup-dialog";
+
+const REDIRECT_MS = 900;
 
 function IconEye({ crossed }: { crossed?: boolean }) {
   if (crossed) {
@@ -50,12 +53,15 @@ export function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [googlePending, setGooglePending] = useState(false);
   const showWelcomeAfterVerifyClose = useRef(false);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const afterRegisterPath = useMemo(
     () => sanitizeNextParam(searchParams.get("next")),
@@ -68,9 +74,32 @@ export function RegisterScreen() {
       : "/login";
   }, [afterRegisterPath]);
 
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current != null) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  function clearFeedback() {
+    setError(null);
+    setNotice(null);
+    setSuccessMessage(null);
+  }
+
+  function scheduleRedirect() {
+    if (redirectTimerRef.current != null) clearTimeout(redirectTimerRef.current);
+    redirectTimerRef.current = setTimeout(() => {
+      redirectTimerRef.current = null;
+      router.replace(afterRegisterPath);
+    }, REDIRECT_MS);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
+    clearFeedback();
     if (!firstName.trim() || !lastName.trim()) {
       setError("Please enter your first and last name.");
       return;
@@ -84,13 +113,14 @@ export function RegisterScreen() {
       return;
     }
     if (!configured) {
-      setError("Sign-up is not configured yet. Add Firebase keys to .env.local and restart the dev server.");
+      setNotice("Sign-up is not configured yet. Add Firebase keys to .env.local and restart the dev server.");
       return;
     }
     setSubmitting(true);
     try {
       const user = await registerWithEmailPassword(firstName, lastName, email, password);
       setSubmittedEmail(user.email ?? email.trim());
+      setSuccessMessage("Account created. We sent a verification link to your inbox—please check spam as well.");
       showWelcomeAfterVerifyClose.current = true;
       setVerifyOpen(true);
     } catch (err) {
@@ -101,21 +131,24 @@ export function RegisterScreen() {
   }
 
   async function handleGoogle() {
-    setError(null);
+    clearFeedback();
     if (!configured) {
-      setError("Sign-up is not configured yet. Add Firebase keys to .env.local and restart the dev server.");
+      setNotice("Sign-up is not configured yet. Add Firebase keys to .env.local and restart the dev server.");
       return;
     }
     setGooglePending(true);
     try {
       await signInWithGoogle();
-      router.replace(afterRegisterPath);
+      setSuccessMessage("Signed in with Google. Redirecting…");
+      scheduleRedirect();
     } catch (err) {
       setError(firebaseAuthErrorMessage(err));
     } finally {
       setGooglePending(false);
     }
   }
+
+  const formLocked = submitting || Boolean(successMessage);
 
   return (
     <>
@@ -153,6 +186,7 @@ export function RegisterScreen() {
               placeholder="First name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
+              disabled={formLocked}
               className={fieldClass}
             />
             <input
@@ -161,6 +195,7 @@ export function RegisterScreen() {
               placeholder="Last name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
+              disabled={formLocked}
               className={fieldClass}
             />
             <input
@@ -170,6 +205,7 @@ export function RegisterScreen() {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={formLocked}
               className={fieldClass}
             />
             <div className="relative">
@@ -180,24 +216,30 @@ export function RegisterScreen() {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={formLocked}
                 className={`${fieldClass} pr-12`}
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1.5 hover:bg-zinc-100"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1.5 hover:bg-zinc-100 disabled:opacity-40"
                 onClick={() => setShowPassword((v) => !v)}
+                disabled={formLocked}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 <IconEye crossed={showPassword} />
               </button>
             </div>
 
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            <div className="space-y-3">
+              {successMessage ? <AuthSuccessBanner>{successMessage}</AuthSuccessBanner> : null}
+              {error ? <AuthErrorBanner>{error}</AuthErrorBanner> : null}
+              {notice ? <AuthNoticeBanner>{notice}</AuthNoticeBanner> : null}
+            </div>
 
             <button
               type="submit"
-              disabled={submitting}
-              className="mt-2 w-full bg-[var(--lf-purple)] py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple-deep)] disabled:opacity-60"
+              disabled={formLocked}
+              className="mt-2 w-full bg-[var(--lf-purple)] py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple-deep)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? "Creating account…" : "Register now"}
             </button>
@@ -213,13 +255,14 @@ export function RegisterScreen() {
           <AuthSocialSection
             className="mt-10"
             google={
-              configured
+              configured && !successMessage
                 ? {
                     onClick: handleGoogle,
                     pending: googlePending,
                   }
                 : undefined
             }
+            pendingHint="Signing in with Google…"
           />
 
           <p className="mx-auto mt-10 max-w-md text-center text-[11px] leading-relaxed text-[var(--lf-muted)] sm:text-xs">
@@ -241,6 +284,7 @@ export function RegisterScreen() {
         open={verifyOpen}
         onClose={() => {
           setVerifyOpen(false);
+          setSuccessMessage(null);
           if (showWelcomeAfterVerifyClose.current) {
             showWelcomeAfterVerifyClose.current = false;
             setWelcomeOpen(true);

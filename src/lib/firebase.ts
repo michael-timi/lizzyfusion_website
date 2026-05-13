@@ -12,6 +12,10 @@ import {
  * Local: set `NEXT_PUBLIC_*` in `.env.local` (see `.env.example`).
  * Firebase App Hosting: `FIREBASE_WEBAPP_CONFIG` is injected at build time — see
  * https://firebase.google.com/docs/app-hosting/firebase-sdks
+ *
+ * **Firestore** uses the default database (`getFirebaseDb`). **Storage** needs
+ * `storageBucket` in this config (`getFirebaseStorage`). **Analytics** uses
+ * `measurementId` when present (`warmupFirebaseAnalytics` / `logAnalyticsEvent`).
  */
 function readConfig(): FirebaseOptions | null {
   const web = process.env.FIREBASE_WEBAPP_CONFIG;
