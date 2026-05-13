@@ -41,6 +41,10 @@ service cloud.firestore {
         && d.price is int
         && d.price >= 0
         && d.price <= 100000000
+        && (!('compareAtPrice' in d)
+          || (d.compareAtPrice is int
+            && d.compareAtPrice > d.price
+            && d.compareAtPrice <= 100000000))
         && d.lead is string
         && d.lead.size() > 0
         && d.lead.size() < 4000
@@ -50,7 +54,22 @@ service cloud.firestore {
         && d.image is string
         && d.image.size() > 10
         && d.image.size() < 2000
-        && d.image.matches('^https://');
+        && d.image.matches('^https://')
+        && (!('sourceImage' in d)
+          || (d.sourceImage is string
+            && d.sourceImage.size() > 10
+            && d.sourceImage.size() < 2000
+            && d.sourceImage.matches('^https://')))
+        && (!('galleryImageUrls' in d)
+          || (d.galleryImageUrls is list && d.galleryImageUrls.size() <= 6))
+        && (!('fittingNotes' in d) || (d.fittingNotes is string && d.fittingNotes.size() <= 4000))
+        && (!('fabricCareNotes' in d) || (d.fabricCareNotes is string && d.fabricCareNotes.size() <= 4000))
+        && (!('shippingNotes' in d) || (d.shippingNotes is string && d.shippingNotes.size() <= 4000))
+        && (!('craftFabricNotes' in d) || (d.craftFabricNotes is string && d.craftFabricNotes.size() <= 4000))
+        && (!('colourAvailabilityNotes' in d)
+          || (d.colourAvailabilityNotes is string && d.colourAvailabilityNotes.size() <= 4000))
+        && (!('craftFabricLabels' in d)
+          || (d.craftFabricLabels is list && d.craftFabricLabels.size() <= 8));
     }
 
     match /catalog_products/{slug} {

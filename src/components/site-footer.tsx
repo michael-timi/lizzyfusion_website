@@ -9,9 +9,9 @@ export function SiteFooter() {
 
   return (
     <footer className="mt-auto bg-[#1a1a1a] text-zinc-300">
-      <div className="mx-auto max-w-[1400px] px-4 py-16 sm:px-6 lg:py-20">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1.2fr)_1fr_1fr_1fr]">
-          <div>
+      <div className="mx-auto max-w-[1400px] px-4 py-14 sm:px-6 sm:py-16 lg:py-20">
+        <div className="grid gap-10 sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-[minmax(0,1.2fr)_1fr_1fr_1fr] lg:gap-12">
+          <div className="sm:col-span-2 lg:col-span-1">
             <p className="font-serif text-2xl font-semibold tracking-tight text-white">
               Join the {site.name} list
             </p>
@@ -47,24 +47,24 @@ export function SiteFooter() {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">About</p>
-            <ul className="mt-4 space-y-2 text-sm">
+            <ul className="mt-4 space-y-1 text-sm">
               <li>
-                <Link href="/about" className="hover:text-white">
+                <Link href="/about" className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white">
                   Our story
                 </Link>
               </li>
               <li>
-                <Link href="/about" className="hover:text-white">
+                <Link href="/about" className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white">
                   Vision & mission
                 </Link>
               </li>
               <li>
-                <Link href="/training" className="hover:text-white">
+                <Link href="/training" className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white">
                   Training
                 </Link>
               </li>
               <li>
-                <Link href="/apprentice" className="hover:text-white">
+                <Link href="/apprentice" className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white">
                   Apprentices
                 </Link>
               </li>
@@ -72,30 +72,30 @@ export function SiteFooter() {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Shop</p>
-            <ul className="mt-4 space-y-2 text-sm">
+            <ul className="mt-4 space-y-1 text-sm">
               <li>
-                <Link href="/shop" className="hover:text-white">
+                <Link href="/shop" className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white">
                   Collections
                 </Link>
               </li>
               <li>
-                <Link href="/lookbook" className="hover:text-white">
+                <Link href="/lookbook" className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white">
                   Lookbook
                 </Link>
               </li>
               <li>
-                <Link href="/wishlist" className="hover:text-white">
+                <Link href="/wishlist" className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white">
                   Wish list
                 </Link>
               </li>
               <FooterAuthLinks />
               <li>
-                <Link href="/custom" className="hover:text-white">
+                <Link href="/custom" className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white">
                   Custom & bespoke
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-white">
+                <Link href="/contact" className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white">
                   Book a fitting
                 </Link>
               </li>
@@ -103,27 +103,32 @@ export function SiteFooter() {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Help</p>
-            <ul className="mt-4 space-y-2 text-sm">
+            <ul className="mt-4 space-y-1 text-sm">
               <li>
-                <Link href="/faqs" className="hover:text-white">
+                <Link href="/faqs" className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white">
                   FAQs
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-white">
+                <Link href="/contact" className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white">
                   Contact
                 </Link>
               </li>
               <li>
-                <a href={quickHi} className="hover:text-white" target="_blank" rel="noreferrer">
+                <a
+                  href={quickHi}
+                  className="block rounded-md py-2.5 transition hover:bg-white/5 hover:text-white"
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   WhatsApp
                 </a>
               </li>
               <li>
-                <span className="text-zinc-500">{site.contact.phoneDisplay}</span>
+                <span className="block py-2 text-zinc-500">{site.contact.phoneDisplay}</span>
               </li>
               <li>
-                <span className="text-zinc-500">{site.location.line}</span>
+                <span className="block py-2 text-zinc-500">{site.location.line}</span>
               </li>
             </ul>
           </div>
@@ -134,7 +139,11 @@ export function SiteFooter() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             {nav.slice(0, 4).map((item) => (
-              <Link key={item.href} href={item.href} className="hover:text-white">
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-md px-2 py-2 transition hover:bg-white/5 hover:text-white"
+              >
                 {item.label}
               </Link>
             ))}

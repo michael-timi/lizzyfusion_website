@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { LfRemoteImage } from "@/components/ui/lf-remote-image";
+import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
-import { formatNgn, landingMedia, sampleProducts, site, whatsappHref } from "@/lib/site";
+import { LfRemoteImage } from "@/components/ui/lf-remote-image";
+import { landingMedia, sampleProducts, site, whatsappHref } from "@/lib/site";
 
 export default function HomePage() {
   const wa = whatsappHref(
@@ -85,7 +86,7 @@ export default function HomePage() {
                           {p.tag}
                         </p>
                         <p className="mt-1 font-medium text-[var(--lf-ink)]">{p.name}</p>
-                        <p className="mt-2 text-sm font-semibold">{formatNgn(p.price)}</p>
+                        <CatalogPriceStack product={p} align="start" />
                       </div>
                     </Link>
                     <WishlistHeart slug={p.slug} className="absolute right-3 top-3" />

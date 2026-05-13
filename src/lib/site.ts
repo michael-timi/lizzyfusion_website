@@ -83,7 +83,8 @@ export const sampleProducts = [
     slug: "signature-abaya-rtw",
     name: "Signature layered abaya",
     tag: "Ready-to-wear",
-    price: 85000,
+    price: 69000,
+    compareAtPrice: 85000,
     lead: "Ships / pickup in Osogbo after size confirmation.",
     description:
       "Layered modest silhouette with a soft drape—ideal for receptions and elevated everyday. Pair with heels or flats; length and lining tweaks are guided in studio.",
@@ -99,7 +100,7 @@ export const sampleProducts = [
     description:
       "Coordinated blouse and wrapper tailored for aso-ebi groups. Embellishment and fabric are finalised on WhatsApp before cutting so every piece matches your palette.",
     image:
-      "https://images.unsplash.com/photo-1556821840-30a7b40c77e9?w=800&q=80&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&q=80&auto=format&fit=crop",
   },
   {
     slug: "office-modest-set",
@@ -121,7 +122,7 @@ export const sampleProducts = [
     description:
       "Floor-length reception drama with structure through the bodice and ease through the skirt. Fittings happen in Osogbo with fabric sourcing guided by the studio.",
     image:
-      "https://images.unsplash.com/photo-1566174053879-435285fbf655?w=800&q=80&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=800&q=80&auto=format&fit=crop",
   },
   {
     slug: "everyday-wrap-dress",
@@ -217,7 +218,7 @@ export const landingMedia = {
       label: "Wedding & reception",
       href: "/shop/reception-full-length",
       image:
-        "https://images.unsplash.com/photo-1566174053879-435285fbf655?w=900&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=900&q=80&auto=format&fit=crop",
       span: "large" as const,
     },
     {
@@ -342,14 +343,31 @@ export function lookbookShopProducts(look: LookbookLook): [SampleProduct, Sample
   return [a, b];
 }
 
-/** PDP gallery: primary image plus lookbook alternates (up to 4). */
-export function galleryUrlsForProduct(product: { slug: string; image: string }): readonly string[] {
-  const urls: string[] = [product.image];
+/** PDP gallery: primary image, optional extra URLs from the product, else legacy lookbook padding. */
+export function galleryUrlsForProduct(product: {
+  slug: string;
+  image: string;
+  galleryImageUrls?: string[];
+}): readonly string[] {
+  const primary = product.image;
+  if ("galleryImageUrls" in product && product.galleryImageUrls !== undefined) {
+    const urls: string[] = [primary];
+    const raw = Array.isArray(product.galleryImageUrls) ? product.galleryImageUrls : [];
+    for (const u of raw) {
+      if (typeof u !== "string" || !u.startsWith("https://")) continue;
+      if (urls.includes(u)) continue;
+      urls.push(u);
+      if (urls.length >= 6) break;
+    }
+    return urls;
+  }
+
+  const urls: string[] = [primary];
   for (const row of landingMedia.lookbook) {
     if (urls.length >= 4) break;
     if (!urls.includes(row.image)) urls.push(row.image);
   }
-  while (urls.length < 4) urls.push(product.image);
+  while (urls.length < 4) urls.push(primary);
   return urls;
 }
 

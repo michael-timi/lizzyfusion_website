@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import { addCartLine } from "@/lib/cart";
 import type { CatalogProduct } from "@/lib/catalog";
+import { catalogWhatsappPriceLine } from "@/lib/catalog-pricing";
+import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { formatNgn, site, whatsappHref } from "@/lib/site";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import { WishlistHeart } from "./wishlist-heart";
@@ -19,6 +21,18 @@ const SWATCHES = ["#2d2d2d", "#8b7355", "#c4a574", "#f5f5f0"] as const;
 const SWATCH_NAMES = ["Charcoal", "Warm brown", "Sand", "Ivory"] as const;
 
 const SIZES = ["UK 8 / S", "UK 10 / M", "UK 12 / L", "UK 14 / XL", "Custom — note in chat"] as const;
+
+const DEFAULT_FITTING_BODY = `${site.name} pieces are cut for modest ease through the bust, hip, and sleeve. Share your usual UK size and any length preferences in WhatsApp; bespoke adjustments are quoted separately.`;
+
+const DEFAULT_FABRIC_BODY =
+  "Fabrics vary by piece—cotton blends, crepe, and occasion-weight textiles are sourced in Lagos and Osogbo. Care labels ship with each order; when in doubt, dry clean for structured gowns and gentle cold wash for everyday cottons.";
+
+const DEFAULT_SHIPPING_BODY = `Nationwide courier can be arranged after WhatsApp confirmation. Pickup in ${site.location.city} is available when your piece is ready. Return and alteration policies are agreed per order so fabric and labour stay fair for small studio production.`;
+
+const DEFAULT_CRAFT_ASIDE =
+  "Lizzy Fusion balances breathable layers with clean finishing—so you stay comfortable through long events without sacrificing polish. Ask on WhatsApp which textile is slated for your colourway.";
+
+const DEFAULT_CRAFT_LABELS = ["Breathable layers", "Small-batch studio", "Osogbo finishing"] as const;
 
 function AccordionRow({
   id,
@@ -66,14 +80,14 @@ export function ProductDetailView({ product, gallery, related }: Props) {
     const lines = [
       `*${site.name} — product enquiry*`,
       `Product: ${product.name}`,
-      `Listed price: ${formatNgn(product.price)}`,
+      catalogWhatsappPriceLine(product),
       `Colour preference: swatch ${selectedSwatch + 1} (see PDP)`,
       `Preferred size: ${size}`,
       `My name and any tweaks (lining, length, sleeves):`,
       `(please fill before sending)`,
     ];
     return whatsappHref(lines.join("\n"));
-  }, [product.name, product.price, selectedSwatch, size]);
+  }, [product, selectedSwatch, size]);
 
   const toggleAcc = (id: string) => {
     setAccOpen((s) => ({ ...s, [id]: !s[id] }));
@@ -153,6 +167,31 @@ export function ProductDetailView({ product, gallery, related }: Props) {
           <p className="mt-4 text-sm leading-relaxed text-[var(--lf-muted)]">{product.description}</p>
           <p className="mt-2 text-xs text-[var(--lf-muted)]">{product.lead}</p>
 
+          <div className="mt-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-ink)]">Price</p>
+            <div className="mt-1.5">
+              <CatalogPriceStack product={product} align="start" />
+            </div>
+          </div>
+
+          {"sourceImage" in product && typeof product.sourceImage === "string" && product.sourceImage.startsWith("https://") ? (
+            <div className="mt-8 border-t border-[var(--lf-line)] pt-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-ink)]">Original listing photo</p>
+              <p className="mt-1 text-xs text-[var(--lf-muted)]">
+                Unedited reference of the garment (studio record). The main gallery above shows the catalogue hero.
+              </p>
+              <div className="relative mx-auto mt-3 aspect-[3/4] w-full max-w-[14rem] overflow-hidden bg-zinc-100">
+                <LfRemoteImage
+                  src={product.sourceImage}
+                  alt={`${product.name} — original listing`}
+                  fill
+                  className="object-cover object-top"
+                  sizes="224px"
+                />
+              </div>
+            </div>
+          ) : null}
+
           <p className="mt-8 text-xs font-semibold uppercase tracking-wider text-[var(--lf-ink)]">Colours</p>
           <div className="mt-2 flex gap-2">
             {SWATCHES.map((hex, i) => (
@@ -168,6 +207,9 @@ export function ProductDetailView({ product, gallery, related }: Props) {
               />
             ))}
           </div>
+          {product.colourAvailabilityNotes?.trim() ? (
+            <p className="mt-3 text-sm leading-relaxed text-[var(--lf-muted)]">{product.colourAvailabilityNotes.trim()}</p>
+          ) : null}
 
           <div className="mt-8 flex items-baseline justify-between gap-4">
             <label htmlFor="pdp-size" className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-ink)]">
@@ -227,32 +269,29 @@ export function ProductDetailView({ product, gallery, related }: Props) {
       <div className="mt-16 grid gap-10 lg:grid-cols-2 lg:gap-12">
         <div>
           <AccordionRow id="fitting" title="Fitting" open={accOpen.fitting ?? false} onToggle={toggleAcc}>
-            {site.name} pieces are cut for modest ease through the bust, hip, and sleeve. Share your usual UK size and
-            any length preferences in WhatsApp; bespoke adjustments are quoted separately.
+            {product.fittingNotes?.trim() ?? DEFAULT_FITTING_BODY}
           </AccordionRow>
           <AccordionRow id="fabric" title="Fabric & care" open={accOpen.fabric ?? false} onToggle={toggleAcc}>
-            Fabrics vary by piece—cotton blends, crepe, and occasion-weight textiles are sourced in Lagos and Osogbo.
-            Care labels ship with each order; when in doubt, dry clean for structured gowns and gentle cold wash for
-            everyday cottons.
+            {product.fabricCareNotes?.trim() ?? DEFAULT_FABRIC_BODY}
           </AccordionRow>
           <AccordionRow id="detail" title="Product detail" open={accOpen.detail ?? false} onToggle={toggleAcc}>
             {product.name} — {product.tag}. {product.description} Lead time: {product.lead}
           </AccordionRow>
           <AccordionRow id="shipping" title="Shipping & returns" open={accOpen.shipping ?? false} onToggle={toggleAcc}>
-            Nationwide courier can be arranged after WhatsApp confirmation. Pickup in {site.location.city} is available
-            when your piece is ready. Return and alteration policies are agreed per order so fabric and labour stay fair
-            for small studio production.
+            {product.shippingNotes?.trim() ?? DEFAULT_SHIPPING_BODY}
           </AccordionRow>
         </div>
 
         <aside className="border border-[var(--lf-line)] bg-zinc-50 p-6 sm:p-8">
           <h2 className="font-serif text-xl font-semibold text-[var(--lf-ink)]">Craft & fabric</h2>
           <p className="mt-3 text-sm leading-relaxed text-[var(--lf-muted)]">
-            Lizzy Fusion balances breathable layers with clean finishing—so you stay comfortable through long events
-            without sacrificing polish. Ask on WhatsApp which textile is slated for your colourway.
+            {product.craftFabricNotes?.trim() ?? DEFAULT_CRAFT_ASIDE}
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
-            {["Breathable layers", "Small-batch studio", "Osogbo finishing"].map((label) => (
+            {(product.craftFabricLabels && product.craftFabricLabels.length > 0
+              ? product.craftFabricLabels
+              : [...DEFAULT_CRAFT_LABELS]
+            ).map((label) => (
               <span
                 key={label}
                 className="rounded-full border border-[var(--lf-line)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--lf-ink)]"
@@ -288,7 +327,7 @@ export function ProductDetailView({ product, gallery, related }: Props) {
                   <Link href={`/shop/${p.slug}`} className="mt-1 block font-semibold text-[var(--lf-ink)] hover:text-[var(--lf-purple-deep)]">
                     {p.name}
                   </Link>
-                  <p className="mt-2 text-sm font-semibold text-[var(--lf-ink)]">{formatNgn(p.price)}</p>
+                  <CatalogPriceStack product={p} align="start" />
                   <div className="mt-3 flex gap-1.5">
                     {SWATCHES.slice(0, 3).map((hex) => (
                       <span

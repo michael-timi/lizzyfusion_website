@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { effectiveCompareAtPrice } from "@/lib/catalog-pricing";
 import { getMergedCatalog, listFirestoreCatalogProducts } from "@/lib/catalog";
 import { formatNgn, sampleProducts, site } from "@/lib/site";
 
@@ -47,12 +48,22 @@ export async function AdminCatalogView() {
               const origin =
                 !inCode ? "Firestore only" : sample && JSON.stringify(sample) === JSON.stringify(p) ? "Code" : "Firestore override";
               const hasRemote = remoteSlugs.has(p.slug);
+              const was = effectiveCompareAtPrice(p);
               return (
                 <tr key={p.slug} className="hover:bg-zinc-50/80">
                   <td className="px-4 py-3 font-mono text-xs text-zinc-600">{p.slug}</td>
                   <td className="px-4 py-3 font-medium text-[var(--lf-ink)]">{p.name}</td>
                   <td className="px-4 py-3 text-[var(--lf-muted)]">{p.tag}</td>
-                  <td className="px-4 py-3 font-semibold tabular-nums">{formatNgn(p.price)}</td>
+                  <td className="px-4 py-3 font-semibold tabular-nums">
+                    {was !== undefined ? (
+                      <span className="inline-flex flex-col items-end gap-0.5">
+                        <span className="text-xs font-medium text-zinc-500 line-through">{formatNgn(was)}</span>
+                        <span className="text-[var(--lf-ink)]">{formatNgn(p.price)}</span>
+                      </span>
+                    ) : (
+                      formatNgn(p.price)
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-xs text-[var(--lf-muted)]">{origin}</td>
                   <td className="px-4 py-3">
                     {hasRemote ? (

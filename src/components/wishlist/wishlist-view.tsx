@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import type { CatalogProduct } from "@/lib/catalog";
-import { formatNgn, sampleProducts, site, whatsappHref } from "@/lib/site";
-import { getWishlistSlugs, subscribeWishlistStore } from "@/lib/wishlist";
+import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
+import type { CatalogProduct } from "@/lib/catalog";
+import { catalogWhatsappPriceLine } from "@/lib/catalog-pricing";
+import { sampleProducts, site, whatsappHref } from "@/lib/site";
+import { getWishlistSlugs, subscribeWishlistStore } from "@/lib/wishlist";
 
 export function WishlistView() {
   const [remoteCatalog, setRemoteCatalog] = useState<CatalogProduct[] | null>(null);
@@ -72,7 +74,7 @@ export function WishlistView() {
               [
                 `*${site.name} — wishlist enquiry*`,
                 `Product: ${p.name}`,
-                `Listed price: ${formatNgn(p.price)}`,
+                catalogWhatsappPriceLine(p),
               ].join("\n"),
             );
             return (
@@ -102,7 +104,7 @@ export function WishlistView() {
                         <p className="mt-0.5 text-sm text-[var(--lf-muted)]">{p.tag}</p>
                       </div>
                     </div>
-                    <p className="shrink-0 text-sm font-semibold text-[var(--lf-ink)]">{formatNgn(p.price)}</p>
+                    <CatalogPriceStack product={p} />
                   </div>
                   <div className="mt-3 flex gap-1.5">
                     {["#2d2d2d", "#6b5b4b", "#8b7355"].map((hex) => (

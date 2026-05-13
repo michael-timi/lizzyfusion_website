@@ -5,23 +5,35 @@ import { useCallback, useState } from "react";
 
 type LoadPhase = "loading" | "loaded" | "error";
 
+/** Next's optimizer proxy times out on slow Unsplash CDN fetches; load those URLs directly in the browser. */
+function bypassOptimizerForSrc(src: ImageProps["src"]): boolean {
+  if (typeof src !== "string") return false;
+  try {
+    return new URL(src).hostname === "images.unsplash.com";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Remote `next/image` with Lizzy Fusion loading and error treatment.
  * For `fill`, use inside a `position: relative` container with explicit dimensions.
  */
 export function LfRemoteImage(props: ImageProps) {
+  const unoptimized = props.unoptimized ?? bypassOptimizerForSrc(props.src);
   if (!props.fill) {
-    return <Image {...props} alt={props.alt ?? ""} />;
+    return <Image {...props} alt={props.alt ?? ""} unoptimized={unoptimized} />;
   }
 
-  return <LfRemoteImageFill {...props} fill />;
+  return <LfRemoteImageFill {...props} fill={true} unoptimized={unoptimized} />;
 }
 
 type FillProps = ImageProps & { fill: true };
 
 function LfRemoteImageFill(props: FillProps) {
-  const { className, onLoad, onError, alt, style, fill, ...rest } = props;
+  const { className, onLoad, onError, alt, style, fill, unoptimized, ...rest } = props;
   void fill;
+  const mergedUnoptimized = unoptimized ?? bypassOptimizerForSrc(rest.src);
   const [phase, setPhase] = useState<LoadPhase>("loading");
 
   const handleLoad = useCallback(
@@ -73,6 +85,7 @@ function LfRemoteImageFill(props: FillProps) {
       <Image
         {...rest}
         fill
+        unoptimized={mergedUnoptimized}
         alt={alt ?? ""}
         style={style}
         onLoad={handleLoad}
