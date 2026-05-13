@@ -9,7 +9,7 @@ import { checkoutTotals } from "@/lib/checkout-totals";
 import { CheckoutCartGate } from "@/components/checkout/checkout-cart-gate";
 import { CheckoutSteps } from "@/components/checkout/checkout-steps";
 import { useCheckoutForm } from "@/components/checkout/checkout-context";
-import { formatNgn, getSampleProductBySlug, site, whatsappHref } from "@/lib/site";
+import { formatNgn, resolveCartLineDisplay, site, whatsappHref } from "@/lib/site";
 
 const input =
   "mt-1.5 w-full border border-[var(--lf-line)] bg-white px-3 py-2.5 text-sm text-[var(--lf-ink)] outline-none transition focus:border-[var(--lf-purple)]";
@@ -41,7 +41,7 @@ export function CheckoutPaymentPage() {
       "Items:",
     ];
     for (const line of lines) {
-      const p = getSampleProductBySlug(line.slug);
+      const p = resolveCartLineDisplay(line);
       if (!p) continue;
       parts.push(`• ${p.name} ×${line.qty} · ${line.size} · ${line.color} — ${formatNgn(p.price * line.qty)}`);
     }

@@ -299,6 +299,14 @@ export function StoreHeaderNav() {
                 <IconSearch />
               </button>
             )}
+            {user && isAdmin ? (
+              <Link
+                href="/admin"
+                className="hidden items-center rounded-full border border-amber-800/30 bg-amber-200/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-950 shadow-sm sm:inline-flex"
+              >
+                Admin
+              </Link>
+            ) : null}
             <div ref={accountWrapRef} className="relative">
               <button
                 type="button"
@@ -348,6 +356,16 @@ export function StoreHeaderNav() {
                         <p className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-amber-950">
                           Administrator
                         </p>
+                      ) : null}
+                      {isAdmin ? (
+                        <Link
+                          href="/admin"
+                          role="menuitem"
+                          className="block border-b border-amber-100 bg-amber-50/80 px-3 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-100"
+                          onClick={() => setAccountOpen(false)}
+                        >
+                          Admin dashboard
+                        </Link>
                       ) : null}
                       <p className="truncate px-3 py-2 font-medium text-[var(--lf-ink)]" title={user.email ?? undefined}>
                         {user.email ?? user.displayName ?? "Member"}
@@ -552,6 +570,15 @@ export function StoreHeaderNav() {
                       <p className="border-b border-amber-200 bg-amber-50 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-amber-950">
                         Administrator
                       </p>
+                    ) : null}
+                    {isAdmin ? (
+                      <Link
+                        href="/admin"
+                        className="block border-b border-amber-100 bg-amber-50/80 py-3 text-center text-sm font-semibold text-amber-950 hover:bg-amber-100"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        Admin dashboard
+                      </Link>
                     ) : null}
                     <p className="truncate border-b border-zinc-100 py-2 text-sm font-medium text-[var(--lf-ink)]">
                       {user.email ?? user.displayName ?? "Member"}

@@ -3,14 +3,26 @@ import Link from "next/link";
 import { LeadForm } from "@/components/lead-form";
 import { ShopCatalog } from "@/components/shop/shop-catalog";
 import { ShopHeroDual } from "@/components/shop/shop-hero-dual";
-import { sampleProducts, site } from "@/lib/site";
-
-export const metadata: Metadata = {
-  title: "Shop all",
-  description: `Browse ready-to-wear and made-to-order pieces from ${site.name}. Prices in Nigerian Naira; orders confirmed on WhatsApp.`,
-};
+import { getMergedCatalog } from "@/lib/catalog";
+import { site } from "@/lib/site";
 
 type SearchParams = { q?: string };
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
+  const { q } = await searchParams;
+  const query = (q ?? "").trim();
+  const baseDesc = `Browse ready-to-wear and made-to-order pieces from ${site.name}. Prices in Nigerian Naira; orders confirmed on WhatsApp.`;
+  return {
+    title: "Shop all",
+    description: baseDesc,
+    robots: query ? { index: false, follow: true } : { index: true, follow: true, "max-image-preview": "large" },
+    alternates: { canonical: "/shop" },
+  };
+}
 
 export default async function ShopPage({
   searchParams,
@@ -19,9 +31,10 @@ export default async function ShopPage({
 }) {
   const { q } = await searchParams;
   const query = (q ?? "").trim();
+  const catalog = await getMergedCatalog();
   const filtered = !query
-    ? [...sampleProducts]
-    : sampleProducts.filter(
+    ? catalog
+    : catalog.filter(
         (p) =>
           p.name.toLowerCase().includes(query.toLowerCase()) ||
           p.tag.toLowerCase().includes(query.toLowerCase()),

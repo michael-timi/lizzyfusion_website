@@ -10,7 +10,7 @@ import {
   subscribeCartStore,
   updateCartQty,
 } from "@/lib/cart";
-import { formatNgn, getSampleProductBySlug, navStorefront, site, whatsappHref } from "@/lib/site";
+import { formatNgn, navStorefront, resolveCartLineDisplay, site, whatsappHref } from "@/lib/site";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 
 function IconClose({ className = "" }: { className?: string }) {
@@ -50,7 +50,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
     const parts: string[] = [`*${site.name} — bag checkout*`];
     let subtotal = 0;
     for (const line of lines) {
-      const p = getSampleProductBySlug(line.slug);
+      const p = resolveCartLineDisplay(line);
       if (!p) continue;
       const lineTotal = p.price * line.qty;
       subtotal += lineTotal;
@@ -115,7 +115,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
           <>
             <ul className="min-h-0 flex-1 divide-y divide-[var(--lf-line)] overflow-y-auto overscroll-contain px-4 py-2">
               {lines.map((line) => {
-                const p = getSampleProductBySlug(line.slug);
+                const p = resolveCartLineDisplay(line);
                 if (!p) return null;
                 const linePrice = p.price * line.qty;
                 return (

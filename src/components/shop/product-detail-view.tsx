@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import { addCartLine } from "@/lib/cart";
-import { formatNgn, site, whatsappHref, type SampleProduct } from "@/lib/site";
+import type { CatalogProduct } from "@/lib/catalog";
+import { formatNgn, site, whatsappHref } from "@/lib/site";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import { WishlistHeart } from "./wishlist-heart";
 
 type Props = {
-  product: SampleProduct;
+  product: CatalogProduct;
   gallery: string[];
-  related: SampleProduct[];
+  related: CatalogProduct[];
 };
 
 const SWATCHES = ["#2d2d2d", "#8b7355", "#c4a574", "#f5f5f0"] as const;
@@ -205,6 +206,9 @@ export function ProductDetailView({ product, gallery, related }: Props) {
                 slug: product.slug,
                 size,
                 color: SWATCH_NAMES[selectedSwatch] ?? `Option ${selectedSwatch + 1}`,
+                unitPrice: product.price,
+                productName: product.name,
+                productImage: product.image,
               })
             }
             className="mt-3 w-full border border-[var(--lf-ink)] bg-white px-6 py-3 text-sm font-semibold text-[var(--lf-ink)] transition hover:border-[var(--lf-purple-deep)] hover:bg-zinc-50"

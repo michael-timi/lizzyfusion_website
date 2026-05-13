@@ -27,6 +27,9 @@ export const metadata: Metadata = {
     template: `%s — ${site.name}`,
   },
   description: `${site.name} in ${site.location.line}. Bespoke, ready-to-wear, and custom modest fashion in Naira. ${site.slogan}`,
+  ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } }
+    : {}),
   openGraph: {
     title: site.name,
     description: site.slogan,

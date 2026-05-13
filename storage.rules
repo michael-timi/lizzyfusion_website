@@ -1,6 +1,17 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Catalogue hero images: public read (storefront + next/image), write only in own uid folder.
+    // Must be listed before the generic /users/{userId}/{allPaths=**} rule.
+    match /users/{userId}/catalog_product_images/{slug}/{fileName} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 6 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Signed-in users: private folder keyed by Firebase Auth uid (uploads, attachments, etc.).
     match /users/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;

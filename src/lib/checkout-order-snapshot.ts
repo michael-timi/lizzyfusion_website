@@ -1,7 +1,7 @@
 import type { CheckoutFormState } from "@/components/checkout/checkout-context";
 import type { CartLine } from "@/lib/cart";
 import { checkoutTotals } from "@/lib/checkout-totals";
-import { getSampleProductBySlug } from "@/lib/site";
+import { resolveCartLineDisplay } from "@/lib/site";
 
 export const ORDER_SNAPSHOT_KEY = "lizzy-fusion-order-snapshot-v1";
 
@@ -44,7 +44,7 @@ export function buildOrderSnapshot(
   if (lines.length === 0) return null;
   const lineSnaps: OrderLineSnapshot[] = [];
   for (const line of lines) {
-    const p = getSampleProductBySlug(line.slug);
+    const p = resolveCartLineDisplay(line);
     if (!p) continue;
     const unitPrice = p.price;
     const lineTotal = unitPrice * line.qty;

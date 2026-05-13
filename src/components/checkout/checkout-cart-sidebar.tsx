@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
 import { getCartLinesJson, parseStoredCart, removeCartLine, subscribeCartStore, updateCartQty } from "@/lib/cart";
 import { checkoutTotals } from "@/lib/checkout-totals";
-import { formatNgn, getSampleProductBySlug, site } from "@/lib/site";
+import { formatNgn, resolveCartLineDisplay, site } from "@/lib/site";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 
 function IconClose({ className = "" }: { className?: string }) {
@@ -29,7 +29,7 @@ export function CheckoutCartSidebar() {
       ) : (
         <ul className="mt-6 space-y-5">
           {lines.map((line) => {
-            const p = getSampleProductBySlug(line.slug);
+            const p = resolveCartLineDisplay(line);
             if (!p) return null;
             const lineTotal = p.price * line.qty;
             return (

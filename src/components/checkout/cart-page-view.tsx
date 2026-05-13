@@ -5,7 +5,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { CheckoutSteps } from "@/components/checkout/checkout-steps";
 import { getCartLinesJson, parseStoredCart, removeCartLine, subscribeCartStore, updateCartQty } from "@/lib/cart";
 import { checkoutTotals } from "@/lib/checkout-totals";
-import { formatNgn, getSampleProductBySlug, site } from "@/lib/site";
+import { formatNgn, resolveCartLineDisplay, site } from "@/lib/site";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 
 function IconClose({ className = "" }: { className?: string }) {
@@ -73,7 +73,7 @@ export function CartPageView() {
               </thead>
               <tbody>
                 {lines.map((line) => {
-                  const p = getSampleProductBySlug(line.slug);
+                  const p = resolveCartLineDisplay(line);
                   if (!p) return null;
                   const unit = p.price;
                   const lineTotal = unit * line.qty;
@@ -139,7 +139,7 @@ export function CartPageView() {
 
           <ul className="mt-8 divide-y divide-[var(--lf-line)] md:hidden">
             {lines.map((line) => {
-              const p = getSampleProductBySlug(line.slug);
+              const p = resolveCartLineDisplay(line);
               if (!p) return null;
               const lineTotal = p.price * line.qty;
               return (

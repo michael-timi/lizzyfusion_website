@@ -6,10 +6,34 @@ export type CartLine = {
   qty: number;
   size: string;
   color: string;
+  /** Captured at add-to-bag so checkout works for Firestore-only catalogue rows. */
+  unitPrice?: number;
+  productName?: string;
+  productImage?: string;
 };
 
 function lineId(slug: string, size: string, color: string): string {
   return `${slug}|||${size}|||${color}`;
+}
+
+function isValidCartLine(row: unknown): row is CartLine {
+  if (!row || typeof row !== "object") return false;
+  const l = row as CartLine;
+  const okPrice =
+    l.unitPrice === undefined || (typeof l.unitPrice === "number" && Number.isFinite(l.unitPrice));
+  const okName = l.productName === undefined || typeof l.productName === "string";
+  const okImage = l.productImage === undefined || typeof l.productImage === "string";
+  return (
+    typeof l.id === "string" &&
+    typeof l.slug === "string" &&
+    typeof l.qty === "number" &&
+    typeof l.size === "string" &&
+    typeof l.color === "string" &&
+    okPrice &&
+    okName &&
+    okImage &&
+    l.qty > 0
+  );
 }
 
 export function getCartLines(): CartLine[] {
@@ -19,17 +43,7 @@ export function getCartLines(): CartLine[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (row): row is CartLine =>
-        row &&
-        typeof row === "object" &&
-        typeof (row as CartLine).id === "string" &&
-        typeof (row as CartLine).slug === "string" &&
-        typeof (row as CartLine).qty === "number" &&
-        typeof (row as CartLine).size === "string" &&
-        typeof (row as CartLine).color === "string" &&
-        (row as CartLine).qty > 0,
-    );
+    return parsed.filter(isValidCartLine);
   } catch {
     return [];
   }
@@ -52,18 +66,44 @@ export function subscribeCartStore(onStoreChange: () => void) {
   };
 }
 
-export function addCartLine(input: { slug: string; size: string; color: string; qty?: number }) {
+export function addCartLine(input: {
+  slug: string;
+  size: string;
+  color: string;
+  qty?: number;
+  unitPrice?: number;
+  productName?: string;
+  productImage?: string;
+}) {
   const qty = input.qty ?? 1;
   const id = lineId(input.slug, input.size, input.color);
   const lines = getCartLines();
   const idx = lines.findIndex((l) => l.id === id);
   if (idx >= 0) {
     const next = [...lines];
-    next[idx] = { ...next[idx]!, qty: next[idx]!.qty + qty };
+    next[idx] = {
+      ...next[idx]!,
+      qty: next[idx]!.qty + qty,
+      ...(input.unitPrice !== undefined ? { unitPrice: input.unitPrice } : {}),
+      ...(input.productName !== undefined ? { productName: input.productName } : {}),
+      ...(input.productImage !== undefined ? { productImage: input.productImage } : {}),
+    };
     setCartLines(next);
     return;
   }
-  setCartLines([...lines, { id, slug: input.slug, size: input.size, color: input.color, qty }]);
+  setCartLines([
+    ...lines,
+    {
+      id,
+      slug: input.slug,
+      size: input.size,
+      color: input.color,
+      qty,
+      ...(input.unitPrice !== undefined ? { unitPrice: input.unitPrice } : {}),
+      ...(input.productName !== undefined ? { productName: input.productName } : {}),
+      ...(input.productImage !== undefined ? { productImage: input.productImage } : {}),
+    },
+  ]);
 }
 
 export function updateCartQty(id: string, qty: number) {
@@ -97,16 +137,7 @@ export function parseStoredCart(json: string): CartLine[] {
   try {
     const parsed = JSON.parse(json) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (row): row is CartLine =>
-        row &&
-        typeof row === "object" &&
-        typeof (row as CartLine).id === "string" &&
-        typeof (row as CartLine).slug === "string" &&
-        typeof (row as CartLine).qty === "number" &&
-        typeof (row as CartLine).size === "string" &&
-        typeof (row as CartLine).color === "string",
-    );
+    return parsed.filter(isValidCartLine);
   } catch {
     return [];
   }

@@ -17,7 +17,7 @@ import {
  * `storageBucket` in this config (`getFirebaseStorage`). **Analytics** uses
  * `measurementId` when present (`warmupFirebaseAnalytics` / `logAnalyticsEvent`).
  */
-function readConfig(): FirebaseOptions | null {
+export function readFirebaseWebConfig(): FirebaseOptions | null {
   const web = process.env.FIREBASE_WEBAPP_CONFIG;
   if (web) {
     try {
@@ -51,7 +51,7 @@ export const firebaseProjectId = "lizzy-fusion" as const;
  */
 export function getFirebaseApp(): FirebaseApp | null {
   if (typeof window === "undefined") return null;
-  const config = readConfig();
+  const config = readFirebaseWebConfig();
   if (!config) return null;
   if (getApps().length === 0) return initializeApp(config);
   return getApp();

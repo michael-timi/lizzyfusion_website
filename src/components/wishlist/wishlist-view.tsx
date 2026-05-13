@@ -1,13 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import type { CatalogProduct } from "@/lib/catalog";
 import { formatNgn, sampleProducts, site, whatsappHref } from "@/lib/site";
 import { getWishlistSlugs, subscribeWishlistStore } from "@/lib/wishlist";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 
 export function WishlistView() {
+  const [remoteCatalog, setRemoteCatalog] = useState<CatalogProduct[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/catalog")
+      .then((r) => r.json())
+      .then((body: { products?: CatalogProduct[] }) => {
+        if (cancelled || !body?.products || !Array.isArray(body.products)) return;
+        setRemoteCatalog(body.products);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const slugKey = useSyncExternalStore(
     subscribeWishlistStore,
     () => getWishlistSlugs().slice().sort().join("\0"),
@@ -17,9 +34,15 @@ export function WishlistView() {
   const slugs = useMemo(() => (slugKey ? slugKey.split("\0") : []), [slugKey]);
 
   const items = useMemo(() => {
-    const set = new Set(slugs);
-    return sampleProducts.filter((p) => set.has(p.slug));
-  }, [slugs]);
+    const map = new Map<string, CatalogProduct>();
+    for (const p of sampleProducts) map.set(p.slug, { ...p });
+    if (remoteCatalog) {
+      for (const p of remoteCatalog) {
+        if (typeof p.slug === "string" && p.slug) map.set(p.slug, p);
+      }
+    }
+    return slugs.map((s) => map.get(s)).filter((p): p is CatalogProduct => Boolean(p));
+  }, [slugs, remoteCatalog]);
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-12 sm:px-6 lg:py-16">
@@ -79,9 +102,7 @@ export function WishlistView() {
                         <p className="mt-0.5 text-sm text-[var(--lf-muted)]">{p.tag}</p>
                       </div>
                     </div>
-                    <p className="shrink-0 text-sm font-semibold text-[var(--lf-ink)]">
-                      {formatNgn(p.price)}
-                    </p>
+                    <p className="shrink-0 text-sm font-semibold text-[var(--lf-ink)]">{formatNgn(p.price)}</p>
                   </div>
                   <div className="mt-3 flex gap-1.5">
                     {["#2d2d2d", "#6b5b4b", "#8b7355"].map((hex) => (

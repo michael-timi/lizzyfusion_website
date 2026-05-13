@@ -3,11 +3,25 @@ import { publicSiteUrl } from "@/lib/site";
 
 export default function robots(): MetadataRoute.Robots {
   const base = publicSiteUrl();
-  return {
-    rules: {
-      userAgent: "*",
-      allow: "/",
-    },
-    sitemap: `${base}/sitemap.xml`,
-  };
+  try {
+    const host = new URL(base).host;
+    return {
+      rules: {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/admin"],
+      },
+      sitemap: `${base}/sitemap.xml`,
+      host,
+    };
+  } catch {
+    return {
+      rules: {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/admin"],
+      },
+      sitemap: `${base}/sitemap.xml`,
+    };
+  }
 }

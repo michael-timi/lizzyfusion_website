@@ -1,18 +1,79 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'admin';
+    }
+
+    function userProfileEmailMatchesAuthToken() {
+      return request.auth.token.email == null
+        || request.resource.data.email == request.auth.token.email;
+    }
+
+    function blogPostPublished(postId) {
+      return exists(/databases/$(database)/documents/blog_posts/$(postId))
+        && get(/databases/$(database)/documents/blog_posts/$(postId)).data.published == true;
+    }
+
+    function commentReplyParentValid(postId, parentId) {
+      return parentId == null
+        || (
+          exists(/databases/$(database)/documents/blog_posts/$(postId)/comments/$(parentId))
+          && get(/databases/$(database)/documents/blog_posts/$(postId)/comments/$(parentId)).data.parentCommentId == null
+        );
+    }
+
+    function catalogProductCore() {
+      let d = request.resource.data;
+      return d.slug is string
+        && d.slug == slug
+        && d.slug.size() > 1
+        && d.slug.size() < 120
+        && d.name is string
+        && d.name.size() > 0
+        && d.name.size() < 200
+        && d.tag is string
+        && d.tag.size() > 0
+        && d.tag.size() < 120
+        && d.price is int
+        && d.price >= 0
+        && d.price <= 100000000
+        && d.lead is string
+        && d.lead.size() > 0
+        && d.lead.size() < 4000
+        && d.description is string
+        && d.description.size() > 0
+        && d.description.size() < 20000
+        && d.image is string
+        && d.image.size() > 10
+        && d.image.size() < 2000
+        && d.image.matches('^https://');
+    }
+
+    match /catalog_products/{slug} {
+      allow read: if true;
+      allow create: if isAdmin() && catalogProductCore();
+      allow update: if isAdmin()
+        && catalogProductCore()
+        && request.resource.data.slug == resource.data.slug;
+      allow delete: if isAdmin();
+    }
+
     match /orders/{orderId} {
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'submitted';
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isAdmin() && request.resource.data.userId == resource.data.userId;
+      allow delete: if false;
     }
 
-    // App-created profiles: clients may only create as `user` and cannot change `userType`.
-    // Set `userType` to `admin` via Firebase console or Admin SDK (bypasses these rules).
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
 
       allow create: if request.auth != null
         && request.auth.uid == userId
@@ -28,10 +89,47 @@ service cloud.firestore {
 
       allow delete: if false;
     }
-  }
-}
 
-function userProfileEmailMatchesAuthToken() {
-  return request.auth.token.email == null
-    || request.resource.data.email == request.auth.token.email;
+    match /blog_posts/{postId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /blog_posts/{postId}/likes/{likeUid} {
+      allow read: if blogPostPublished(postId);
+      allow create: if request.auth != null
+        && request.auth.uid == likeUid
+        && blogPostPublished(postId)
+        && request.resource.data.keys().hasOnly(['createdAt']);
+      allow delete: if request.auth != null && request.auth.uid == likeUid;
+      allow update: if false;
+    }
+
+    match /blog_posts/{postId}/comments/{commentId} {
+      allow read: if blogPostPublished(postId);
+      allow create: if request.auth != null
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorDisplayName is string
+        && request.resource.data.authorDisplayName.size() > 0
+        && request.resource.data.authorDisplayName.size() < 200
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() < 8000
+        && (request.resource.data.parentCommentId == null
+          || (request.resource.data.parentCommentId is string
+            && request.resource.data.parentCommentId.size() > 0))
+        && blogPostPublished(postId)
+        && commentReplyParentValid(postId, request.resource.data.parentCommentId);
+      allow update: if request.auth != null
+        && resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorUid == resource.data.authorUid
+        && request.resource.data.parentCommentId == resource.data.parentCommentId
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() < 8000
+        && blogPostPublished(postId);
+      allow delete: if request.auth != null
+        && (resource.data.authorUid == request.auth.uid || isAdmin());
+    }
+  }
 }

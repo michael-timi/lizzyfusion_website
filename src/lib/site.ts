@@ -1,5 +1,7 @@
 /** Lizzy Fusion — single source for contact, brand copy, and business rules. */
 
+import type { CartLine } from "@/lib/cart";
+
 export const site = {
   name: "Lizzy Fusion",
   slogan: "Modesty Redefined, Style Redesigned",
@@ -151,6 +153,21 @@ export function getSampleProductBySlug(slug: string): SampleProduct | undefined 
   return sampleProducts.find((p) => p.slug === slug);
 }
 
+/** Resolve name, price, and image for a cart line (code catalogue + optional snapshots from add-to-bag). */
+export function resolveCartLineDisplay(line: CartLine): {
+  slug: string;
+  name: string;
+  price: number;
+  image: string;
+} | null {
+  const sample = getSampleProductBySlug(line.slug);
+  const price = line.unitPrice ?? sample?.price;
+  const name = line.productName ?? sample?.name;
+  const image = line.productImage ?? sample?.image;
+  if (price === undefined || typeof name !== "string" || !name || typeof image !== "string" || !image) return null;
+  return { slug: line.slug, name, price, image };
+}
+
 /** Map nav mega “specialty” labels to a representative catalogue PDP (or `/shop` when none fits). */
 export function shopHrefForSpecialty(label: string): string {
   const table: Record<string, SampleProduct["slug"]> = {
@@ -181,6 +198,7 @@ export const navStorefront = [
 export const nav = [
   { href: "/", label: "Home" },
   { href: "/shop", label: "Shop" },
+  { href: "/blog", label: "Journal" },
   { href: "/custom", label: "Custom / Bespoke" },
   { href: "/training", label: "Training" },
   { href: "/apprentice", label: "Apprentices" },
@@ -325,7 +343,7 @@ export function lookbookShopProducts(look: LookbookLook): [SampleProduct, Sample
 }
 
 /** PDP gallery: primary image plus lookbook alternates (up to 4). */
-export function galleryUrlsForProduct(product: SampleProduct): readonly string[] {
+export function galleryUrlsForProduct(product: { slug: string; image: string }): readonly string[] {
   const urls: string[] = [product.image];
   for (const row of landingMedia.lookbook) {
     if (urls.length >= 4) break;

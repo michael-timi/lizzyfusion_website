@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
-import { publicSiteUrl, sampleProducts } from "@/lib/site";
+import { getMergedCatalog } from "@/lib/catalog";
+import { publicSiteUrl } from "@/lib/site";
 
 const staticPaths: { path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }[] =
   [
@@ -12,6 +13,7 @@ const staticPaths: { path: string; changeFrequency: MetadataRoute.Sitemap[number
     { path: "/faqs", changeFrequency: "monthly", priority: 0.8 },
     { path: "/policies", changeFrequency: "yearly", priority: 0.5 },
     { path: "/about", changeFrequency: "monthly", priority: 0.75 },
+    { path: "/blog", changeFrequency: "weekly", priority: 0.72 },
     { path: "/custom", changeFrequency: "monthly", priority: 0.8 },
     { path: "/cart", changeFrequency: "monthly", priority: 0.6 },
     { path: "/wishlist", changeFrequency: "monthly", priority: 0.6 },
@@ -27,7 +29,7 @@ const staticPaths: { path: string; changeFrequency: MetadataRoute.Sitemap[number
     { path: "/register", changeFrequency: "yearly", priority: 0.35 },
   ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = publicSiteUrl();
   const lastModified = new Date();
 
@@ -38,7 +40,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority,
   }));
 
-  for (const p of sampleProducts) {
+  const merged = await getMergedCatalog();
+  for (const p of merged) {
     entries.push({
       url: `${base}/shop/${p.slug}`,
       lastModified,
