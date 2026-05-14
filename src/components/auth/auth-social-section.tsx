@@ -1,14 +1,6 @@
-function SocialApple() {
+function SocialGoogleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.55-1.31 3.09-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-    </svg>
-  );
-}
-
-function SocialGoogle() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" className="shrink-0" aria-hidden>
       <path
         fill="#4285F4"
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -29,18 +21,6 @@ function SocialGoogle() {
   );
 }
 
-function SocialFacebook() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
-      <circle cx="12" cy="12" r="11" fill="#1877F2" />
-      <path
-        fill="#fff"
-        d="M13.5 12.5h2l.5-2.5h-2.5V8.8c0-.6.3-.9 1-.9h1.3V5.5h-1.7c-1.8 0-2.8 1-2.8 2.8v1.7H9v2.5h2.3V19h3.2v-6.5z"
-      />
-    </svg>
-  );
-}
-
 export type AuthGoogleAction = {
   onClick: () => void | Promise<void>;
   pending?: boolean;
@@ -50,12 +30,19 @@ type AuthSocialSectionProps = {
   className?: string;
   /** When set, the Google button runs Firebase Google sign-in / sign-up. */
   google?: AuthGoogleAction;
-  /** Shown under the row while Google sign-in is in progress (login / register). */
+  /** Shown under the button while Google sign-in is in progress. */
   pendingHint?: string;
+  /** Visible label on the Google button (default: Continue with Google). */
+  googleLabel?: string;
 };
 
-/** “Or” rule + Apple / Google / Facebook — matches register & login reference layout. */
-export function AuthSocialSection({ className = "", google, pendingHint = "Signing in with Google…" }: AuthSocialSectionProps) {
+/** “Or” divider plus a single full-width Google sign-in button (same width as the email form). */
+export function AuthSocialSection({
+  className = "",
+  google,
+  pendingHint = "Signing in with Google…",
+  googleLabel = "Continue with Google",
+}: AuthSocialSectionProps) {
   const googlePending = Boolean(google?.pending);
   const googleDisabled = !google || googlePending;
 
@@ -67,36 +54,28 @@ export function AuthSocialSection({ className = "", google, pendingHint = "Signi
         <span className="h-px flex-1 bg-[var(--lf-line)]" />
       </div>
 
-      <div className="mt-6 flex justify-center gap-4" aria-busy={googlePending || undefined}>
+      <div className="mt-6" aria-busy={googlePending || undefined}>
         <button
           type="button"
-          title="Apple sign-in coming soon"
-          className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--lf-line)] bg-black text-white transition hover:opacity-90"
-          aria-label="Continue with Apple (coming soon)"
-        >
-          <SocialApple />
-        </button>
-        <button
-          type="button"
-          title={google ? "Continue with Google" : "Google sign-in — connect Firebase to enable"}
+          title={google ? googleLabel : "Google sign-in — connect Firebase to enable"}
           disabled={googleDisabled}
           onClick={() => {
             if (!google || googlePending) return;
             void google.onClick();
           }}
-          className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--lf-line)] bg-white transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label="Continue with Google"
+          className="flex w-full items-center justify-center gap-3 border border-[var(--lf-line)] bg-white py-3.5 pl-4 pr-5 text-sm font-semibold text-[var(--lf-ink)] shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label={googleLabel}
           aria-busy={googlePending}
         >
-          <SocialGoogle />
-        </button>
-        <button
-          type="button"
-          title="Facebook sign-in coming soon"
-          className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--lf-line)] bg-white transition hover:bg-zinc-50"
-          aria-label="Continue with Facebook (coming soon)"
-        >
-          <SocialFacebook />
+          {googlePending ? (
+            <span
+              className="inline-block h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-[var(--lf-line)] border-t-[var(--lf-purple)]"
+              aria-hidden
+            />
+          ) : (
+            <SocialGoogleIcon />
+          )}
+          <span>{googleLabel}</span>
         </button>
       </div>
 
