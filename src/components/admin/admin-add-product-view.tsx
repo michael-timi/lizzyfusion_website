@@ -23,6 +23,7 @@ import type {
 import type { CatalogSuggestFromHero } from "@/lib/gemini-catalog-suggest-from-hero";
 import { AdminFormErrorBanner } from "@/components/admin/admin-form-error-banner";
 import { useFirebaseAuth } from "@/components/auth/firebase-auth-provider";
+import { requestCatalogRevalidation } from "@/lib/catalog-revalidate-client";
 import { getFirebaseDb } from "@/lib/firebase-db";
 import { getFirebaseStorage } from "@/lib/firebase-storage";
 
@@ -139,6 +140,7 @@ export function AdminAddProductView() {
   const [heroPreviewUrl, setHeroPreviewUrl] = useState<string | null>(null);
 
   const [suggestBusy, setSuggestBusy] = useState(false);
+  const [suggestAppliedAt, setSuggestAppliedAt] = useState<number | null>(null);
   const lastSuggestedHeroKeyRef = useRef<string | null>(null);
   const heroSuggestEpochRef = useRef(0);
 
@@ -228,6 +230,7 @@ export function AdminAddProductView() {
         }
         applySuggestions(body.suggestions);
         lastSuggestedHeroKeyRef.current = `${file.name}-${file.size}-${file.lastModified}`;
+        setSuggestAppliedAt(Date.now());
       } catch (e) {
         if (e instanceof Error && e.name === "AbortError") return;
         if (epoch !== heroSuggestEpochRef.current) return;
@@ -240,6 +243,12 @@ export function AdminAddProductView() {
     },
     [user, applySuggestions],
   );
+
+  useEffect(() => {
+    if (suggestAppliedAt === null) return;
+    const tid = window.setTimeout(() => setSuggestAppliedAt(null), 6000);
+    return () => window.clearTimeout(tid);
+  }, [suggestAppliedAt]);
 
   useEffect(() => {
     if (!heroFile || !user || !isAdmin) {
@@ -430,6 +439,9 @@ export function AdminAddProductView() {
       };
 
       await setDoc(ref, payload);
+      // Invalidate the storefront catalogue cache so the "View on storefront" link below works
+      // immediately instead of 404'ing until the unstable_cache TTL expires.
+      await requestCatalogRevalidation(user, s);
       setDoneSlug(s);
       setSlug("");
       setName("");
@@ -456,6 +468,7 @@ export function AdminAddProductView() {
       setCraftFabricNotes("");
       setCraftFabricLabelsInput("");
       setColourAvailabilityNotes("");
+      setSuggestAppliedAt(null);
     } catch (err) {
       for (const p of galleryPaths) {
         if (storage) {
@@ -542,6 +555,7 @@ export function AdminAddProductView() {
                   if (!f) {
                     setHeroFile(null);
                     lastSuggestedHeroKeyRef.current = null;
+                    setSuggestAppliedAt(null);
                     e.target.value = "";
                     return;
                   }
@@ -558,26 +572,26 @@ export function AdminAddProductView() {
                   setError(null);
                   lastSuggestedHeroKeyRef.current = null;
                   heroSuggestEpochRef.current += 1;
+                  setSuggestAppliedAt(null);
                   setHeroFile(f);
                   e.target.value = "";
                 }}
               />
               Choose hero image
             </label>
-            {suggestBusy ? (
-              <span className="text-sm font-medium text-[var(--lf-ink)]">Filling fields from image…</span>
-            ) : null}
-            {heroFile && !suggestBusy ? (
+            {heroFile ? (
               <button
                 type="button"
+                disabled={suggestBusy}
                 onClick={() => {
                   lastSuggestedHeroKeyRef.current = null;
                   heroSuggestEpochRef.current += 1;
+                  setSuggestAppliedAt(null);
                   void suggestFromHero(heroFile, undefined, heroSuggestEpochRef.current);
                 }}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-[var(--lf-ink)] transition hover:border-[var(--lf-purple)]"
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-[var(--lf-ink)] transition hover:border-[var(--lf-purple)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-zinc-200"
               >
-                Refresh AI suggestions
+                {suggestBusy ? "Drafting…" : "Refresh AI suggestions"}
               </button>
             ) : null}
             {heroFile ? (
@@ -588,12 +602,61 @@ export function AdminAddProductView() {
                   setHeroFile(null);
                   lastSuggestedHeroKeyRef.current = null;
                   heroSuggestEpochRef.current += 1;
+                  setSuggestAppliedAt(null);
                 }}
               >
                 Clear hero
               </button>
             ) : null}
           </div>
+          {suggestBusy ? (
+            <div
+              className="flex items-start gap-3 rounded-xl border border-[var(--lf-purple)]/30 bg-white px-4 py-3 shadow-sm"
+              role="status"
+              aria-live="polite"
+            >
+              <span
+                className="mt-0.5 inline-block h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-[var(--lf-purple)] border-t-transparent"
+                aria-hidden="true"
+              />
+              <div className="min-w-0 flex-1 text-sm leading-snug text-[var(--lf-ink)]">
+                <p className="font-semibold">Drafting product details from your hero…</p>
+                <p className="mt-0.5 text-xs text-[var(--lf-muted)]">
+                  Gemini is suggesting the slug, name, price, PDP copy and studio controls below. This usually takes
+                  10–20 seconds — please leave those fields alone until they fill in, then review and edit anything
+                  before publishing.
+                </p>
+              </div>
+            </div>
+          ) : null}
+          {!suggestBusy && suggestAppliedAt !== null ? (
+            <div
+              className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3"
+              role="status"
+              aria-live="polite"
+            >
+              <span
+                aria-hidden="true"
+                className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white"
+              >
+                ✓
+              </span>
+              <div className="min-w-0 flex-1 text-sm leading-snug text-emerald-900">
+                <p className="font-semibold">Suggestions applied — review and edit below before publishing.</p>
+                <p className="mt-0.5 text-xs text-emerald-800/90">
+                  Everything Gemini drafted is fully editable. Use “Refresh AI suggestions” to try again if anything
+                  looks off.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSuggestAppliedAt(null)}
+                className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-800 underline-offset-2 hover:bg-emerald-100 hover:underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
           {heroPreviewUrl ? (
             <div>
               <p className="text-sm font-medium text-[var(--lf-ink)]">Hero preview</p>
@@ -1083,10 +1146,10 @@ export function AdminAddProductView() {
         <div className="flex flex-wrap gap-3 pt-2">
           <button
             type="submit"
-            disabled={busy || !canPublish}
+            disabled={busy || suggestBusy || !canPublish}
             className="rounded-full bg-[var(--lf-ink)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple-deep)] disabled:opacity-50"
           >
-            {busy ? "Publishing…" : "Publish to catalogue"}
+            {busy ? "Publishing…" : suggestBusy ? "Waiting for AI draft…" : "Publish to catalogue"}
           </button>
         </div>
       </form>

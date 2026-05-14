@@ -25,6 +25,86 @@ export type AdminVerifyFailure =
   | { kind: "not_admin"; detail: string };
 
 /**
+ * Diagnostic shape for the admin UI: where the service-account credential is being read from,
+ * whether it actually parses, and a remediation hint when it doesn't. Never includes the
+ * credential body itself — only enough context for the admin to find and fix the env.
+ */
+export type AdminCredStatus =
+  | { ok: true; via: "path"; path: string }
+  | { ok: true; via: "json"; jsonByteLength: number }
+  | { ok: false; kind: "missing"; detail: string }
+  | { ok: false; kind: "path-not-found"; detail: string; path: string }
+  | { ok: false; kind: "parse-error"; detail: string; via: "path" | "json"; path?: string };
+
+/**
+ * Inspect the service-account credential env without initializing firebase-admin. Safe to call
+ * from Server Components rendering an admin diagnostics card.
+ *
+ * Reads `FIREBASE_SERVICE_ACCOUNT_PATH` / `GOOGLE_APPLICATION_CREDENTIALS` first, then falls back
+ * to inline JSON in `FIREBASE_SERVICE_ACCOUNT_JSON`, matching `getOrInitAdmin`.
+ */
+export function describeAdminCredentials(): AdminCredStatus {
+  const inline = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+  const filePath =
+    process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim() ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+
+  if (filePath) {
+    if (!existsSync(filePath)) {
+      return {
+        ok: false,
+        kind: "path-not-found",
+        path: filePath,
+        detail:
+          `Credential file not found at: ${filePath}. Use the real absolute path to your downloaded ` +
+          `*-firebase-adminsdk-*.json (not the .env.example placeholder).`,
+      };
+    }
+    try {
+      const raw = readFileSync(filePath, "utf8");
+      const normalized = normalizeCredentialJsonString(raw);
+      JSON.parse(normalized);
+      return { ok: true, via: "path", path: filePath };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "parse_error";
+      return {
+        ok: false,
+        kind: "parse-error",
+        via: "path",
+        path: filePath,
+        detail: `Could not read or parse the service-account JSON at ${filePath}: ${msg}.`,
+      };
+    }
+  }
+
+  if (inline) {
+    try {
+      const normalized = normalizeCredentialJsonString(inline);
+      JSON.parse(normalized);
+      return { ok: true, via: "json", jsonByteLength: normalized.length };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "parse_error";
+      return {
+        ok: false,
+        kind: "parse-error",
+        via: "json",
+        detail:
+          `Inline FIREBASE_SERVICE_ACCOUNT_JSON did not parse: ${msg}. The value must be one line ` +
+          `starting with { (no quotes around it).`,
+      };
+    }
+  }
+
+  return {
+    ok: false,
+    kind: "missing",
+    detail:
+      "No Admin credentials found. Set FIREBASE_SERVICE_ACCOUNT_PATH=/absolute/path/to/serviceAccount.json " +
+      "(preferred) or FIREBASE_SERVICE_ACCOUNT_JSON (one-line JSON) in .env.local, then restart the dev server.",
+  };
+}
+
+/**
  * Initialize Firebase Admin once. Use either:
  * - `FIREBASE_SERVICE_ACCOUNT_PATH` or `GOOGLE_APPLICATION_CREDENTIALS` — absolute path to the downloaded `.json`
  * - `FIREBASE_SERVICE_ACCOUNT_JSON` — minified single-line JSON (only if no credential file, or file path is missing)
@@ -76,6 +156,23 @@ function getOrInitAdmin(): { app: admin.app.App | null; credHint?: string } {
       credHint: `Invalid service account JSON or file: ${msg}. ${tip}`,
     };
   }
+}
+
+/**
+ * Server-side Firestore via firebase-admin. Returns null if Admin credentials are missing.
+ *
+ * Use this for any Server Component / Route Handler / RSC read or write — the Firebase **Web** SDK
+ * is not designed for Node and can hang or return empty silently in server contexts.
+ */
+export function getAdminFirestore(): admin.firestore.Firestore | null {
+  const { app, credHint } = getOrInitAdmin();
+  if (!app) {
+    if (credHint && process.env.NODE_ENV !== "production") {
+      console.warn(`[firebase-admin] ${credHint}`);
+    }
+    return null;
+  }
+  return admin.firestore();
 }
 
 /** Returns uid when the Firebase ID token is valid and Firestore marks the user as admin. */

@@ -1,22 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
-import { getSampleProductBySlug, landingMedia, site } from "@/lib/site";
+import type { CatalogProduct } from "@/lib/catalog";
+import { hrefForKeywords, pickProductByKeywords } from "@/lib/catalog-keywords";
+import { landingMedia, site } from "@/lib/site";
 
 /** Modimal-style olive for Occasions mega only (Image 1 reference). */
 const oliveBar =
   "flex w-full items-center justify-between bg-[#74866a] px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-[#65755f]";
 
-const occasionSlugs = [
-  "reception-full-length",
-  "aso-ebi-set",
-  "signature-abaya-rtw",
-  "office-modest-set",
-] as const;
+/**
+ * Keyword preferences for the four occasion "edit" cards. Resolved against the live catalogue at
+ * mount time so retired or renamed products don't leave dead cards in the mega-nav.
+ */
+const occasionKeywordSets: ReadonlyArray<{
+  keywords: readonly string[];
+  badge?: "New" | "Restock";
+}> = [
+  { keywords: ["reception", "gown"], badge: "New" },
+  { keywords: ["aso-ebi"] },
+  { keywords: ["abaya", "ready-to-wear"], badge: "Restock" },
+  { keywords: ["office"] },
+];
 
 function OccasionAccordion({
   id,
@@ -43,9 +52,7 @@ function OccasionAccordion({
   );
 }
 
-function MiniProductCard({ slug, badge }: { slug: string; badge?: "New" | "Restock" }) {
-  const p = getSampleProductBySlug(slug);
-  if (!p) return null;
+function MiniProductCard({ p, badge }: { p: CatalogProduct; badge?: "New" | "Restock" }) {
   return (
     <li className="group/card min-w-0 border border-[var(--lf-line)] bg-white shadow-sm">
       <Link href={`/shop/${p.slug}`} className="block">
@@ -84,11 +91,33 @@ function MiniProductCard({ slug, badge }: { slug: string; badge?: "New" | "Resto
 export function MegaOccasionsPanel() {
   const [openId, setOpenId] = useState<string | null>("occasion");
   const [a, b] = landingMedia.collectionTiles;
+  const [catalog, setCatalog] = useState<readonly CatalogProduct[] | null>(null);
 
-  const products = occasionSlugs.map((slug, i) => ({
-    slug,
-    badge: (i === 0 ? "New" : i === 2 ? "Restock" : undefined) as "New" | "Restock" | undefined,
-  }));
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/catalog")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { products?: CatalogProduct[] } | null) => {
+        if (cancelled || !body?.products || !Array.isArray(body.products)) return;
+        setCatalog(body.products);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const aHref = catalog ? hrefForKeywords(catalog, a.keywords) : "/shop";
+  const bHref = catalog ? hrefForKeywords(catalog, b.keywords) : "/shop";
+
+  const products = catalog
+    ? occasionKeywordSets
+        .map(({ keywords, badge }) => {
+          const p = pickProductByKeywords(catalog, keywords);
+          return p ? { p, badge } : null;
+        })
+        .filter((x): x is { p: CatalogProduct; badge: "New" | "Restock" | undefined } => x !== null)
+    : [];
 
   return (
     <div className="space-y-8">
@@ -103,10 +132,10 @@ export function MegaOccasionsPanel() {
       </nav>
 
       <div className="grid grid-cols-2 gap-0 border border-[var(--lf-line)] bg-zinc-100">
-        <Link href={a.href} className="group/oh relative aspect-[3/4] max-h-[min(22rem,42vh)] min-h-[12rem]">
+        <Link href={aHref} className="group/oh relative aspect-[3/4] max-h-[min(22rem,42vh)] min-h-[12rem]">
           <LfRemoteImage src={a.image} alt={a.label} fill className="object-cover transition duration-500 group-hover/oh:scale-[1.02]" sizes="50vw" />
         </Link>
-        <Link href={b.href} className="group/oh relative aspect-[3/4] max-h-[min(22rem,42vh)] min-h-[12rem]">
+        <Link href={bHref} className="group/oh relative aspect-[3/4] max-h-[min(22rem,42vh)] min-h-[12rem]">
           <LfRemoteImage src={b.image} alt={b.label} fill className="object-cover transition duration-500 group-hover/oh:scale-[1.02]" sizes="50vw" />
         </Link>
       </div>
@@ -159,13 +188,26 @@ export function MegaOccasionsPanel() {
         <div className="min-w-0">
           <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--lf-line)] pb-4">
             <p className="font-serif text-xl font-semibold text-[var(--lf-ink)] sm:text-2xl">Occasion edit</p>
-            <p className="text-sm text-[var(--lf-muted)]">{products.length} items</p>
+            <p className="text-sm text-[var(--lf-muted)]">
+              {catalog === null ? "Loading…" : `${products.length} items`}
+            </p>
           </div>
-          <ul className="mt-6 grid grid-cols-2 gap-4 sm:gap-5">
-            {products.map(({ slug, badge }) => (
-              <MiniProductCard key={slug} slug={slug} badge={badge} />
-            ))}
-          </ul>
+          {catalog === null ? (
+            <ul className="mt-6 grid grid-cols-2 gap-4 sm:gap-5" aria-hidden>
+              {[0, 1, 2, 3].map((i) => (
+                <li
+                  key={i}
+                  className="aspect-[3/4] animate-pulse border border-[var(--lf-line)] bg-zinc-100 shadow-sm"
+                />
+              ))}
+            </ul>
+          ) : (
+            <ul className="mt-6 grid grid-cols-2 gap-4 sm:gap-5">
+              {products.map(({ p, badge }) => (
+                <MiniProductCard key={p.slug} p={p} badge={badge} />
+              ))}
+            </ul>
+          )}
           <p className="mt-6 text-xs text-[var(--lf-muted)]">
             Bespoke timelines in {site.location.city}—{site.name} replies on WhatsApp with next steps after you share
             your date and references.

@@ -5,11 +5,16 @@ import { useCallback, useState } from "react";
 
 type LoadPhase = "loading" | "loaded" | "error";
 
-/** Next's optimizer proxy times out on slow Unsplash CDN fetches; load those URLs directly in the browser. */
+/** Next's optimizer proxy times out on slow remote fetches; load these URLs directly in the browser. */
 function bypassOptimizerForSrc(src: ImageProps["src"]): boolean {
   if (typeof src !== "string") return false;
   try {
-    return new URL(src).hostname === "images.unsplash.com";
+    const host = new URL(src).hostname;
+    if (host === "images.unsplash.com") return true;
+    // Large catalog PNGs from Storage often exceed the optimizer's ~7s fetch/resize window.
+    if (host === "firebasestorage.googleapis.com") return true;
+    if (host === "storage.googleapis.com") return true;
+    return false;
   } catch {
     return false;
   }

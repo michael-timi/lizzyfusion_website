@@ -26,10 +26,10 @@ service cloud.firestore {
         );
     }
 
-    function catalogProductCore() {
+    function catalogProductCore(catalogSlug) {
       let d = request.resource.data;
       return d.slug is string
-        && d.slug == slug
+        && d.slug == catalogSlug
         && d.slug.size() > 1
         && d.slug.size() < 120
         && d.name is string
@@ -74,11 +74,25 @@ service cloud.firestore {
 
     match /catalog_products/{slug} {
       allow read: if true;
-      allow create: if isAdmin() && catalogProductCore();
+      allow create: if isAdmin() && catalogProductCore(slug);
       allow update: if isAdmin()
-        && catalogProductCore()
+        && catalogProductCore(slug)
         && request.resource.data.slug == resource.data.slug;
       allow delete: if isAdmin();
+    }
+
+    function siteFeaturedSchema() {
+      let d = request.resource.data;
+      return d.collectionTilePins is map
+        && d.lookbookPins is map
+        && d.collectionTilePins.size() <= 20
+        && d.lookbookPins.size() <= 20;
+    }
+
+    match /site_featured/{docId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && siteFeaturedSchema();
+      allow delete: if false;
     }
 
     match /orders/{orderId} {

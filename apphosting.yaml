@@ -1,11 +1,21 @@
-# Firebase App Hosting — project: lizzy-fusion
-# Create / link a backend: https://console.firebase.google.com/project/lizzy-fusion/apphosting
-# CLI: firebase apphosting:backends:create --project lizzy-fusion
+# Firebase App Hosting — project: lizzy-fusion (Next.js SSR + API routes)
+#
+# 1) Blaze billing: App Hosting requires the pay-as-you-go plan.
+# 2) Create a backend: https://console.firebase.google.com/project/lizzy-fusion/apphosting
+#    or: firebase apphosting:backends:create --project lizzy-fusion
+# 3) Set firebase.json → apphosting[0].backendId to the backend ID from the console (must match).
+#    Or run: firebase init apphosting (links this folder and writes backendId).
+# 4) Copy production env from .env.example into the backend Environment settings (console);
+#    .env* files are not uploaded (.gitignore).
+# 5) Deploy: npm run firebase:deploy:apphosting   (or firebase deploy)
 # https://firebase.google.com/docs/app-hosting/configure
+# https://firebase.google.com/docs/app-hosting/alt-deploy
 
 runConfig:
   minInstances: 0
-  maxInstances: 100
+  # Cloud Run default quota in many regions caps total CPU/memory; maxInstances > 20
+  # can fail rollout (see Cloud Run quotas / CpuAllocPerProjectRegion).
+  maxInstances: 20
   concurrency: 80
   cpu: 1
   memoryMiB: 512

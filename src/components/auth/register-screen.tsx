@@ -245,13 +245,6 @@ export function RegisterScreen() {
             </button>
           </form>
 
-          <p className="mx-auto mt-8 max-w-md text-center text-sm text-[var(--lf-muted)]">
-            Already have an account?{" "}
-            <Link href={loginHref} className="font-semibold text-[var(--lf-ink)] underline-offset-2 hover:underline">
-              Log in
-            </Link>
-          </p>
-
           <AuthSocialSection
             className="mt-10"
             google={
@@ -262,8 +255,15 @@ export function RegisterScreen() {
                   }
                 : undefined
             }
-            pendingHint="Signing in with Google…"
+            pendingHint="Continuing with Google…"
           />
+
+          <p className="mx-auto mt-10 max-w-md text-center text-sm text-[var(--lf-muted)]">
+            Already have an account?{" "}
+            <Link href={loginHref} className="font-semibold text-[var(--lf-ink)] underline-offset-2 hover:underline">
+              Log in
+            </Link>
+          </p>
 
           <p className="mx-auto mt-10 max-w-md text-center text-[11px] leading-relaxed text-[var(--lf-muted)] sm:text-xs">
             By clicking Register now you agree to{" "}

@@ -1,7 +1,13 @@
-import { collection, getDocs } from "firebase/firestore";
-import { getFirestore } from "firebase/firestore";
-import { getFirebaseAppServer } from "@/lib/firebase-server-app";
+import { unstable_cache } from "next/cache";
+import {
+  describeAdminCredentials,
+  getAdminFirestore,
+  type AdminCredStatus,
+} from "@/lib/firebase-admin-server";
 import { sampleProducts } from "@/lib/site";
+
+/** Cache tag for the storefront catalogue. Invalidate after admin write via `revalidateTag(CATALOG_CACHE_TAG, 'max')`. */
+export const CATALOG_CACHE_TAG = "catalog";
 
 /** Same shape as `SampleProduct` — used for merged catalogue (code + Firestore). */
 export type CatalogProduct = {
@@ -111,40 +117,127 @@ function isCatalogProduct(data: unknown): data is CatalogProduct {
   return true;
 }
 
-async function fetchFirestoreCatalog(): Promise<CatalogProduct[]> {
-  const app = getFirebaseAppServer();
-  if (!app) return [];
-  const db = getFirestore(app);
-  const snap = await getDocs(collection(db, "catalog_products"));
-  const out: CatalogProduct[] = [];
-  for (const d of snap.docs) {
-    const data = d.data();
-    if (!isCatalogProduct(data)) continue;
-    if (data.slug !== d.id) continue;
-    out.push(data);
+/**
+ * Read all `catalog_products` documents via the **firebase-admin** SDK (proper server-side reads).
+ *
+ * Returns `null` (distinct from `[]`) when Admin credentials are missing or the read throws,
+ * so callers can choose to fall back to code defaults instead of treating it as "empty catalogue".
+ */
+async function fetchFirestoreCatalogUncached(): Promise<CatalogProduct[] | null> {
+  const db = getAdminFirestore();
+  if (!db) return null;
+  try {
+    const snap = await db.collection("catalog_products").get();
+    const out: CatalogProduct[] = [];
+    for (const d of snap.docs) {
+      const data = d.data();
+      if (!isCatalogProduct(data)) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn(`[catalog] Skipping catalog_products/${d.id}: failed schema validation.`);
+        }
+        continue;
+      }
+      if (data.slug !== d.id) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn(`[catalog] Skipping catalog_products/${d.id}: doc id does not match slug "${data.slug}".`);
+        }
+        continue;
+      }
+      out.push(data);
+    }
+    return out;
+  } catch (e) {
+    if (process.env.NODE_ENV !== "production") {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`[catalog] Firestore read failed: ${msg}`);
+    }
+    return null;
   }
-  return out;
 }
 
-/** Raw Firestore rows (validated). For admin edit links and diagnostics — not merged with code defaults. */
+/**
+ * Cached wrapper around `fetchFirestoreCatalogUncached` tagged with `CATALOG_CACHE_TAG`.
+ * Admin writes call `revalidateTag(CATALOG_CACHE_TAG, 'max')` so newly added products appear
+ * on the storefront without waiting for a rebuild.
+ */
+const fetchFirestoreCatalog = unstable_cache(
+  fetchFirestoreCatalogUncached,
+  ["catalog_products:all:v1"],
+  { tags: [CATALOG_CACHE_TAG], revalidate: 300 },
+);
+
+/**
+ * Raw Firestore rows (validated). For admin edit links and diagnostics.
+ * Returns `[]` (not `null`) so admin tables render even when Firestore is unreachable.
+ */
 export async function listFirestoreCatalogProducts(): Promise<CatalogProduct[]> {
-  return fetchFirestoreCatalog();
+  return (await fetchFirestoreCatalog()) ?? [];
 }
 
-/** Codebase defaults plus Firestore `catalog_products` (document id = `slug`; remote wins on duplicate slug). */
+/**
+ * Storefront catalogue. **Firestore is the single source of truth on a seeded project.**
+ *
+ * Behaviour:
+ * - Firestore read failed (`null` — usually missing Admin creds): fall back to `sampleProducts`
+ *   so the storefront stays up.
+ * - Firestore returned rows: those rows win. For any slug in `sampleProducts` that has not yet
+ *   been written to Firestore, the code default is included as a transparent fallback so the
+ *   storefront keeps showing the bootstrap products before a one-shot migration.
+ *
+ * Run `npm run catalog:seed` once to push the code defaults into Firestore; from that point on
+ * admin owns the catalogue end-to-end (and re-running the seed is a no-op).
+ */
 export async function getMergedCatalog(): Promise<CatalogProduct[]> {
   const remote = await fetchFirestoreCatalog();
-  const map = new Map<string, CatalogProduct>();
-  for (const p of sampleProducts) {
-    map.set(p.slug, { ...p });
+  if (remote === null) {
+    return sampleProducts.map((p) => ({ ...p }));
   }
-  for (const p of remote) {
-    map.set(p.slug, p);
-  }
-  return Array.from(map.values());
+  const remoteSlugs = new Set(remote.map((p) => p.slug));
+  const unseededDefaults = sampleProducts
+    .filter((p) => !remoteSlugs.has(p.slug))
+    .map((p) => ({ ...p }));
+  return [...remote, ...unseededDefaults];
 }
 
 export async function getCatalogProductBySlug(slug: string): Promise<CatalogProduct | undefined> {
-  const merged = await getMergedCatalog();
-  return merged.find((p) => p.slug === slug);
+  const all = await getMergedCatalog();
+  return all.find((p) => p.slug === slug);
+}
+
+/**
+ * Live connection status for the admin diagnostics card. Bypasses the storefront `unstable_cache`
+ * so admins always see the *current* state — useful when they've just fixed credentials and want
+ * to confirm Firestore is reachable before doing any writes.
+ */
+export type CatalogConnectionStatus =
+  | { ok: true; productCount: number; credStatus: Extract<AdminCredStatus, { ok: true }> }
+  | { ok: false; kind: "no-credentials"; credStatus: Extract<AdminCredStatus, { ok: false }> }
+  | { ok: false; kind: "read-failed"; detail: string; credStatus: AdminCredStatus };
+
+export async function getCatalogConnectionStatus(): Promise<CatalogConnectionStatus> {
+  const credStatus = describeAdminCredentials();
+  if (!credStatus.ok) {
+    return { ok: false, kind: "no-credentials", credStatus };
+  }
+  const db = getAdminFirestore();
+  if (!db) {
+    return {
+      ok: false,
+      kind: "no-credentials",
+      credStatus: {
+        ok: false,
+        kind: "missing",
+        detail:
+          "Service-account credential was found but firebase-admin would not initialize. Restart " +
+          "the server after correcting FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_SERVICE_ACCOUNT_JSON.",
+      },
+    };
+  }
+  try {
+    const snap = await db.collection("catalog_products").count().get();
+    return { ok: true, productCount: snap.data().count, credStatus };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return { ok: false, kind: "read-failed", detail, credStatus };
+  }
 }
