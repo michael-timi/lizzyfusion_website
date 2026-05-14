@@ -6,32 +6,46 @@ import { useMemo } from "react";
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
-import { landingMedia, lookbookShopProducts, site } from "@/lib/site";
+import type { CatalogProduct } from "@/lib/catalog";
+import { site } from "@/lib/site";
 
 const SWATCHES = ["#2d2d2d", "#8b7355", "#c4a574"] as const;
 
-const looks = landingMedia.lookbook;
+/**
+ * Per-day look with its "shop the look" pair resolved server-side. The lookbook page reads the
+ * live catalogue from Firestore and resolves keyword preferences before handing the data off to
+ * this client component — so admin edits show up on /lookbook without any rebuild.
+ */
+export type ResolvedLook = {
+  label: string;
+  caption: string;
+  href: string;
+  image: string;
+  heroImage: string;
+  badgeNewOnIndex?: number;
+  pair: readonly [CatalogProduct, CatalogProduct] | null;
+};
 
-function indexForDayParam(day: string | null): number {
+function indexForDayParam(looks: readonly ResolvedLook[], day: string | null): number {
   if (!day || !day.trim()) {
     const sat = looks.findIndex((l) => l.label === "Saturday");
     return sat >= 0 ? sat : looks.length - 1;
   }
   const i = looks.findIndex((l) => l.label.toLowerCase() === day.trim().toLowerCase());
-  return i >= 0 ? i : indexForDayParam(null);
+  return i >= 0 ? i : indexForDayParam(looks, null);
 }
 
-export function LookbookScreen() {
+export function LookbookScreen({ looks }: { looks: readonly ResolvedLook[] }) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const active = useMemo(
-    () => indexForDayParam(searchParams.get("day")),
-    [searchParams],
+    () => indexForDayParam(looks, searchParams.get("day")),
+    [looks, searchParams],
   );
 
   const look = looks[active]!;
-  const pair = lookbookShopProducts(look);
+  const pair = look.pair;
 
   const selectDay = (i: number) => {
     router.replace(`/lookbook?day=${encodeURIComponent(looks[i]!.label)}`, { scroll: false });
@@ -67,7 +81,9 @@ export function LookbookScreen() {
             className="object-cover object-top"
             sizes="(max-width: 1024px) 100vw, 50vw"
           />
-          <WishlistHeart slug={look.shopSlugs[0]} className="absolute right-3 top-3 z-10" />
+          {pair ? (
+            <WishlistHeart slug={pair[0].slug} className="absolute right-3 top-3 z-10" />
+          ) : null}
         </div>
 
         <div className="min-w-0">
@@ -87,7 +103,7 @@ export function LookbookScreen() {
                         className="object-cover transition duration-500 group-hover/st:scale-[1.03]"
                         sizes="(max-width: 640px) 45vw, 240px"
                       />
-                      {"badgeNewOnIndex" in look && look.badgeNewOnIndex === i ? (
+                      {look.badgeNewOnIndex === i ? (
                         <span className="pointer-events-none absolute left-2 top-2 bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--lf-ink)]">
                           New
                         </span>
@@ -148,7 +164,9 @@ export function LookbookScreen() {
                   className="object-cover"
                   sizes="128px"
                 />
-                <WishlistHeart slug={d.shopSlugs[0]} className="absolute right-2 top-2 z-10" />
+                {d.pair ? (
+                  <WishlistHeart slug={d.pair[0].slug} className="absolute right-2 top-2 z-10" />
+                ) : null}
               </div>
               <p
                 className={`mt-2 max-w-[7rem] text-sm font-semibold sm:max-w-[8rem] ${

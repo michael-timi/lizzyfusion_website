@@ -8,9 +8,13 @@
     "dev:trace": "NEXT_TELEMETRY_DISABLED=1 NEXT_TURBOPACK_TRACING=1 next dev -H localhost --turbopack",
     "build": "next build",
     "start": "next start",
+    "firebase:deploy": "firebase deploy",
+    "firebase:deploy:apphosting": "firebase deploy --only apphosting --force",
+    "firebase:deploy:rules": "firebase deploy --only firestore:rules,storage",
     "lint": "eslint",
     "test": "vitest run",
-    "seed:blog": "node scripts/seed-blog.mjs"
+    "seed:blog": "node scripts/seed-blog.mjs",
+    "catalog:seed": "node scripts/seed-catalog.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.52.0",

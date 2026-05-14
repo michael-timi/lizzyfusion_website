@@ -169,22 +169,27 @@ export function resolveCartLineDisplay(line: CartLine): {
   return { slug: line.slug, name, price, image };
 }
 
-/** Map nav mega “specialty” labels to a representative catalogue PDP (or `/shop` when none fits). */
+/**
+ * Map nav mega "specialty" labels to a `/shop?q=…` search URL. Returns search results rather than
+ * a hard-coded PDP so the link survives admin renaming or retiring the previously-pinned product.
+ * `/shop` filters by name/tag substring (see `src/app/shop/page.tsx`), so the keyword has to appear
+ * in at least one product's name or tag — pick keywords that are stable for the brand voice.
+ */
 export function shopHrefForSpecialty(label: string): string {
-  const table: Record<string, SampleProduct["slug"]> = {
-    "Wedding dress": "reception-full-length",
-    "Ready-to-wear": "signature-abaya-rtw",
-    "Reception dress": "reception-full-length",
-    "Aso-ebi": "aso-ebi-set",
-    "Dinner gowns": "reception-full-length",
-    "Casual wear": "everyday-wrap-dress",
-    "Civil dress": "everyday-wrap-dress",
-    "Church wear": "church-shift-dress",
-    "Office wear": "office-modest-set",
-    "Ball gowns": "reception-full-length",
+  const table: Record<string, string> = {
+    "Wedding dress": "reception",
+    "Ready-to-wear": "ready-to-wear",
+    "Reception dress": "reception",
+    "Aso-ebi": "aso-ebi",
+    "Dinner gowns": "reception",
+    "Casual wear": "wrap",
+    "Civil dress": "dress",
+    "Church wear": "church",
+    "Office wear": "office",
+    "Ball gowns": "reception",
   };
-  const slug = table[label];
-  return slug ? `/shop/${slug}` : "/shop";
+  const q = table[label];
+  return q ? `/shop?q=${encodeURIComponent(q)}` : "/shop";
 }
 
 /** Primary storefront nav (Modimal-style). Other routes stay in footer / mobile sheet. */
@@ -208,7 +213,14 @@ export const nav = [
   { href: "/register", label: "Create account" },
 ] as const;
 
-/** Hero + collection tiles — placeholder photography until studio shots exist. */
+/**
+ * Hero + collection tiles — placeholder photography until studio shots exist.
+ *
+ * **Slug-free model**: tiles and lookbook entries declare `keywords` instead of pinning a specific
+ * product slug. Server components resolve a matching catalogue product at render time using
+ * `pickProductByKeywords` / `hrefForKeywords` from `@/lib/catalog-keywords`, so the storefront keeps
+ * working when admin renames or retires a piece in Firestore.
+ */
 export const landingMedia = {
   hero: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=2400&q=85&auto=format&fit=crop",
   sustainability:
@@ -216,28 +228,28 @@ export const landingMedia = {
   collectionTiles: [
     {
       label: "Wedding & reception",
-      href: "/shop/reception-full-length",
+      keywords: ["reception", "bridal", "wedding"] as readonly string[],
       image:
         "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=900&q=80&auto=format&fit=crop",
       span: "large" as const,
     },
     {
       label: "Dresses & gowns",
-      href: "/shop/everyday-wrap-dress",
+      keywords: ["wrap", "dress", "gown"] as readonly string[],
       image:
         "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=900&q=80&auto=format&fit=crop",
       span: "tall" as const,
     },
     {
       label: "Ready-to-wear",
-      href: "/shop/signature-abaya-rtw",
+      keywords: ["ready-to-wear", "abaya"] as readonly string[],
       image:
         "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=900&q=80&auto=format&fit=crop",
       span: "wide" as const,
     },
     {
       label: "Church & office",
-      href: "/shop/office-modest-set",
+      keywords: ["office", "church"] as readonly string[],
       image:
         "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=900&q=80&auto=format&fit=crop",
       span: "small" as const,
@@ -252,7 +264,7 @@ export const landingMedia = {
         "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=600&q=80&auto=format&fit=crop",
       heroImage:
         "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=1400&q=85&auto=format&fit=crop",
-      shopSlugs: ["church-shift-dress", "signature-abaya-rtw"] as const,
+      shopKeywords: [["church"], ["abaya", "ready-to-wear"]] as readonly [readonly string[], readonly string[]],
       badgeNewOnIndex: 0,
     },
     {
@@ -263,7 +275,7 @@ export const landingMedia = {
         "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&q=80&auto=format&fit=crop",
       heroImage:
         "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=1400&q=85&auto=format&fit=crop",
-      shopSlugs: ["aso-ebi-set", "reception-full-length"] as const,
+      shopKeywords: [["aso-ebi"], ["reception", "gown"]] as readonly [readonly string[], readonly string[]],
       badgeNewOnIndex: 0,
     },
     {
@@ -274,7 +286,7 @@ export const landingMedia = {
         "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&q=80&auto=format&fit=crop",
       heroImage:
         "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1400&q=85&auto=format&fit=crop",
-      shopSlugs: ["office-modest-set", "church-shift-dress"] as const,
+      shopKeywords: [["office"], ["church"]] as readonly [readonly string[], readonly string[]],
     },
     {
       label: "Wednesday",
@@ -284,7 +296,7 @@ export const landingMedia = {
         "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=600&q=80&auto=format&fit=crop",
       heroImage:
         "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=1400&q=85&auto=format&fit=crop",
-      shopSlugs: ["reception-full-length", "everyday-wrap-dress"] as const,
+      shopKeywords: [["reception", "gown"], ["wrap", "dress"]] as readonly [readonly string[], readonly string[]],
       badgeNewOnIndex: 1,
     },
     {
@@ -295,7 +307,7 @@ export const landingMedia = {
         "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&q=80&auto=format&fit=crop",
       heroImage:
         "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1400&q=85&auto=format&fit=crop",
-      shopSlugs: ["everyday-wrap-dress", "signature-abaya-rtw"] as const,
+      shopKeywords: [["wrap", "dress"], ["abaya", "ready-to-wear"]] as readonly [readonly string[], readonly string[]],
     },
     {
       label: "Friday",
@@ -305,7 +317,7 @@ export const landingMedia = {
         "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=600&q=80&auto=format&fit=crop",
       heroImage:
         "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=1400&q=85&auto=format&fit=crop",
-      shopSlugs: ["signature-abaya-rtw", "office-modest-set"] as const,
+      shopKeywords: [["abaya", "ready-to-wear"], ["office"]] as readonly [readonly string[], readonly string[]],
       badgeNewOnIndex: 0,
     },
     {
@@ -316,7 +328,7 @@ export const landingMedia = {
         "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=600&q=80&auto=format&fit=crop",
       heroImage:
         "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=1400&q=85&auto=format&fit=crop",
-      shopSlugs: ["office-modest-set", "reception-full-length"] as const,
+      shopKeywords: [["office"], ["reception", "gown"]] as readonly [readonly string[], readonly string[]],
       badgeNewOnIndex: 0,
     },
   ],
@@ -334,14 +346,6 @@ export const landingMedia = {
 } as const;
 
 export type LookbookLook = (typeof landingMedia.lookbook)[number];
-
-/** Resolve the two catalogue pieces that make up a lookbook “shop the look” row. */
-export function lookbookShopProducts(look: LookbookLook): [SampleProduct, SampleProduct] | null {
-  const a = getSampleProductBySlug(look.shopSlugs[0]);
-  const b = getSampleProductBySlug(look.shopSlugs[1]);
-  if (!a || !b) return null;
-  return [a, b];
-}
 
 /** PDP gallery: primary image, optional extra URLs from the product, else legacy lookbook padding. */
 export function galleryUrlsForProduct(product: {

@@ -1,23 +1,36 @@
 import Link from "next/link";
+import { AdminCatalogStatusBanner } from "@/components/admin/admin-catalog-status-banner";
 import { effectiveCompareAtPrice } from "@/lib/catalog-pricing";
-import { getMergedCatalog, listFirestoreCatalogProducts } from "@/lib/catalog";
+import {
+  getCatalogConnectionStatus,
+  getMergedCatalog,
+  listFirestoreCatalogProducts,
+} from "@/lib/catalog";
 import { formatNgn, sampleProducts, site } from "@/lib/site";
 
 export async function AdminCatalogView() {
-  const [merged, remoteRows] = await Promise.all([getMergedCatalog(), listFirestoreCatalogProducts()]);
+  const [merged, remoteRows, status] = await Promise.all([
+    getMergedCatalog(),
+    listFirestoreCatalogProducts(),
+    getCatalogConnectionStatus(),
+  ]);
   const codeSlugs = new Set<string>(sampleProducts.map((p) => p.slug));
   const remoteSlugs = new Set(remoteRows.map((p) => p.slug));
 
   return (
     <div className="space-y-6">
+      <AdminCatalogStatusBanner status={status} />
+
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">Catalogue</h2>
           <p className="mt-1 max-w-2xl text-sm text-[var(--lf-muted)]">
-            Merged list: defaults from <code className="rounded bg-zinc-100 px-1 text-xs">sampleProducts</code> in{" "}
-            <code className="rounded bg-zinc-100 px-1 text-xs">src/lib/site.ts</code>, plus Firestore{" "}
-            <code className="rounded bg-zinc-100 px-1 text-xs">catalog_products</code>. Same slug in both → Firestore
-            wins on the storefront.
+            Firestore <code className="rounded bg-zinc-100 px-1 text-xs">catalog_products</code> is the source of truth.
+            Code defaults from <code className="rounded bg-zinc-100 px-1 text-xs">sampleProducts</code> in{" "}
+            <code className="rounded bg-zinc-100 px-1 text-xs">src/lib/site.ts</code> only appear here for slugs that
+            haven&apos;t been seeded yet — run{" "}
+            <code className="rounded bg-zinc-100 px-1 text-xs">npm run catalog:seed</code> to migrate them, then edit
+            from this page.
           </p>
         </div>
         <Link
@@ -90,8 +103,12 @@ export async function AdminCatalogView() {
       </div>
 
       <p className="text-xs text-[var(--lf-muted)]">
-        Server merge needs Firebase env on the host for Firestore rows to appear here and on {site.name}. Without it,
-        only code defaults are listed. Sitemap includes merged PDP URLs when the server can read Firestore.
+        Firestore reads use the Firebase Admin SDK on the server — set{" "}
+        <code className="rounded bg-zinc-100 px-1 text-[11px]">FIREBASE_SERVICE_ACCOUNT_PATH</code> (or{" "}
+        <code className="rounded bg-zinc-100 px-1 text-[11px]">FIREBASE_SERVICE_ACCOUNT_JSON</code>) on the host so this
+        table and {site.name} storefront PDPs stay in sync. Saves invalidate the storefront cache via{" "}
+        <code className="rounded bg-zinc-100 px-1 text-[11px]">/api/admin/catalog/revalidate</code> so PDPs refresh
+        instantly.
       </p>
     </div>
   );

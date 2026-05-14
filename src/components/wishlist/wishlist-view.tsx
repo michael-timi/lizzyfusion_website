@@ -1,32 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import type { CatalogProduct } from "@/lib/catalog";
 import { catalogWhatsappPriceLine } from "@/lib/catalog-pricing";
-import { sampleProducts, site, whatsappHref } from "@/lib/site";
+import { site, whatsappHref } from "@/lib/site";
 import { getWishlistSlugs, subscribeWishlistStore } from "@/lib/wishlist";
 
-export function WishlistView() {
-  const [remoteCatalog, setRemoteCatalog] = useState<CatalogProduct[] | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetch("/api/catalog")
-      .then((r) => r.json())
-      .then((body: { products?: CatalogProduct[] }) => {
-        if (cancelled || !body?.products || !Array.isArray(body.products)) return;
-        setRemoteCatalog(body.products);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+/**
+ * Wishlist slugs are stored per-device in `localStorage`. The catalog itself is rendered into the
+ * tree by the Server Component wrapper from `getMergedCatalog()`, so we never hydrate against a
+ * potentially-stale `sampleProducts` constant — that previously made Firestore-only products
+ * (e.g. anything an admin just added) flash empty on every wishlist load.
+ */
+export function WishlistView({ catalog }: { catalog: readonly CatalogProduct[] }) {
   const slugKey = useSyncExternalStore(
     subscribeWishlistStore,
     () => getWishlistSlugs().slice().sort().join("\0"),
@@ -37,14 +27,11 @@ export function WishlistView() {
 
   const items = useMemo(() => {
     const map = new Map<string, CatalogProduct>();
-    for (const p of sampleProducts) map.set(p.slug, { ...p });
-    if (remoteCatalog) {
-      for (const p of remoteCatalog) {
-        if (typeof p.slug === "string" && p.slug) map.set(p.slug, p);
-      }
+    for (const p of catalog) {
+      if (typeof p.slug === "string" && p.slug) map.set(p.slug, p);
     }
     return slugs.map((s) => map.get(s)).filter((p): p is CatalogProduct => Boolean(p));
-  }, [slugs, remoteCatalog]);
+  }, [slugs, catalog]);
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-12 sm:px-6 lg:py-16">

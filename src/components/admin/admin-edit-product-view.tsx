@@ -9,6 +9,7 @@ import type { CatalogProduct } from "@/lib/catalog";
 import { uploadCatalogProductHeroImage } from "@/lib/catalog-product-image-upload";
 import { AdminFormErrorBanner } from "@/components/admin/admin-form-error-banner";
 import { useFirebaseAuth } from "@/components/auth/firebase-auth-provider";
+import { requestCatalogRevalidation } from "@/lib/catalog-revalidate-client";
 import { getFirebaseDb } from "@/lib/firebase-db";
 import { getFirebaseStorage } from "@/lib/firebase-storage";
 
@@ -217,6 +218,7 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       else delete next.craftFabricLabels;
 
       await setDoc(ref, next as CatalogProduct);
+      await requestCatalogRevalidation(user, catalogSlug);
       setImage(img);
       setImageFile(null);
       setImageMode("url");
@@ -240,6 +242,7 @@ export function AdminEditProductView({ catalogSlug }: Props) {
     setError(null);
     try {
       await deleteDoc(doc(db, "catalog_products", catalogSlug));
+      await requestCatalogRevalidation(user, catalogSlug);
       router.push("/admin/catalog");
       router.refresh();
     } catch (err) {

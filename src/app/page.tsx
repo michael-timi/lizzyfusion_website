@@ -2,14 +2,26 @@ import Link from "next/link";
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
-import { landingMedia, sampleProducts, site, whatsappHref } from "@/lib/site";
+import { getMergedCatalog } from "@/lib/catalog";
+import { resolveTileProduct } from "@/lib/site-featured";
+import { getSiteFeatured } from "@/lib/site-featured-server";
+import { landingMedia, site, whatsappHref } from "@/lib/site";
 
-export default function HomePage() {
+const HOME_BEST_SELLERS_LIMIT = 6;
+
+export default async function HomePage() {
   const wa = whatsappHref(
     `Hello ${site.name}, I am on your website and would love to book a consultation in ${site.location.city}.`,
   );
 
-  const [t0, t1, t2, t3] = landingMedia.collectionTiles;
+  const [catalog, featured] = await Promise.all([getMergedCatalog(), getSiteFeatured()]);
+  const bestSellers = catalog.slice(0, HOME_BEST_SELLERS_LIMIT);
+
+  const tilesWithHref = landingMedia.collectionTiles.map((tile) => ({
+    tile,
+    href: resolveTileProduct(featured, catalog, tile).href,
+  }));
+  const [tile0, tile1, tile2, tile3] = tilesWithHref;
 
   return (
     <div className="bg-white">
@@ -67,7 +79,7 @@ export default function HomePage() {
             </Link>
           </div>
           <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {sampleProducts.map((p) => {
+            {bestSellers.map((p) => {
               return (
                 <li key={p.slug} className="group/card bg-white">
                   <div className="relative">
@@ -104,10 +116,10 @@ export default function HomePage() {
           Collection
         </h2>
         <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-3 lg:gap-4 lg:min-h-[560px]">
-          <CollectionTile tile={t0} className="min-h-[240px] sm:min-h-[280px] lg:col-span-2 lg:row-span-2 lg:min-h-0" />
-          <CollectionTile tile={t1} className="min-h-[220px] lg:col-span-1 lg:row-span-2 lg:col-start-3 lg:min-h-0" />
-          <CollectionTile tile={t2} className="min-h-[200px] lg:col-span-1 lg:row-start-3 lg:min-h-0" />
-          <CollectionTile tile={t3} className="min-h-[200px] lg:col-span-2 lg:row-start-3 lg:col-start-2 lg:min-h-0" />
+          <CollectionTile {...tile0} className="min-h-[240px] sm:min-h-[280px] lg:col-span-2 lg:row-span-2 lg:min-h-0" />
+          <CollectionTile {...tile1} className="min-h-[220px] lg:col-span-1 lg:row-span-2 lg:col-start-3 lg:min-h-0" />
+          <CollectionTile {...tile2} className="min-h-[200px] lg:col-span-1 lg:row-start-3 lg:min-h-0" />
+          <CollectionTile {...tile3} className="min-h-[200px] lg:col-span-2 lg:row-start-3 lg:col-start-2 lg:min-h-0" />
         </div>
       </section>
 
@@ -238,14 +250,16 @@ export default function HomePage() {
 
 function CollectionTile({
   tile,
+  href,
   className,
 }: {
   tile: (typeof landingMedia.collectionTiles)[number];
+  href: string;
   className?: string;
 }) {
   return (
     <Link
-      href={tile.href}
+      href={href}
       className={`group/ct relative block min-h-[200px] overflow-hidden bg-zinc-100 ${className ?? ""}`}
     >
       <LfRemoteImage

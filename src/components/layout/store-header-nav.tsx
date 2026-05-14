@@ -755,12 +755,12 @@ function MegaPanelContents({
                 </ul>
               </div>
               <MegaImageCard
-                href={landingMedia.collectionTiles[0].href}
+                href={shopHrefForSpecialty(landingMedia.collectionTiles[0].label)}
                 label={landingMedia.collectionTiles[0].label}
                 src={landingMedia.collectionTiles[0].image}
               />
               <MegaImageCard
-                href="/shop/aso-ebi-set"
+                href={shopHrefForSpecialty("Aso-ebi")}
                 label="Aso-ebi & groups"
                 src={landingMedia.collectionTiles[1].image}
               />
