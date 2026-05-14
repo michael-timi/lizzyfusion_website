@@ -139,7 +139,9 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
             const active =
               pathname === item.href ||
               (item.href === "/admin/catalog" &&
-                (pathname === "/admin/catalog" || pathname.startsWith("/admin/catalog/edit/"))) ||
+                (pathname === "/admin/catalog" ||
+                  pathname === "/admin/catalog/add" ||
+                  pathname.startsWith("/admin/catalog/edit/"))) ||
               (item.href !== "/admin" &&
                 item.href !== "/admin/catalog" &&
                 pathname.startsWith(`${item.href}/`));

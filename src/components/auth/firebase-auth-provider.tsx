@@ -77,7 +77,7 @@ export function FirebaseAuthProvider({ children }: { children: React.ReactNode }
       (snap) => {
         setProfileLoading(false);
         const t = snap.data()?.userType;
-        setIsAdmin(t === "admin");
+        setIsAdmin(typeof t === "string" && t.toLowerCase() === "admin");
       },
       () => {
         setProfileLoading(false);

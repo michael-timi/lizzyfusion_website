@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { FirebaseError } from "firebase/app";
 import { deleteDoc, doc, getDoc, setDoc } from "firebase/firestore";
 import type { CatalogProduct } from "@/lib/catalog";
 import { uploadCatalogProductHeroImage } from "@/lib/catalog-product-image-upload";
@@ -156,6 +157,27 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       return;
     }
 
+    const nameT = name.trim();
+    const tagT = tag.trim();
+    const leadT = lead.trim();
+    const descriptionT = description.trim();
+    if (nameT.length >= 200) {
+      setError("Product name must be under 200 characters (Firestore catalogue limit).");
+      return;
+    }
+    if (tagT.length >= 120) {
+      setError("Collection tag must be under 120 characters.");
+      return;
+    }
+    if (leadT.length > 4000) {
+      setError("Lead time / fulfilment copy must be at most 4,000 characters.");
+      return;
+    }
+    if (descriptionT.length > 20_000) {
+      setError("Description must be at most 20,000 characters.");
+      return;
+    }
+
     let img = image.trim();
     setBusy(true);
     try {
@@ -179,13 +201,13 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       const next: Record<string, unknown> = { ...prev };
 
       next.slug = catalogSlug;
-      next.name = name.trim();
-      next.tag = tag.trim();
+      next.name = nameT;
+      next.tag = tagT;
       next.price = price;
       if (compareAtPrice !== undefined) next.compareAtPrice = compareAtPrice;
       else delete next.compareAtPrice;
-      next.lead = lead.trim();
-      next.description = description.trim();
+      next.lead = leadT;
+      next.description = descriptionT;
       next.image = img;
 
       if (galleryControlled) {
@@ -225,7 +247,10 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       setSavedAt(Date.now());
       router.refresh();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Could not save product.";
+      let msg = err instanceof Error ? err.message : "Could not save product.";
+      if (err instanceof FirebaseError && err.code === "permission-denied") {
+        msg = `Firestore rejected this save (permission denied). If your profile is already admin, check field limits (name under 200 characters, tag under 120, lead at most 4,000, description at most 20,000, https image) and deploy the latest firestore.rules (npm run firebase:deploy:rules).`;
+      }
       setError(msg);
     } finally {
       setBusy(false);
@@ -246,7 +271,10 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       router.push("/admin/catalog");
       router.refresh();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Could not delete product.";
+      let msg = err instanceof Error ? err.message : "Could not delete product.";
+      if (err instanceof FirebaseError && err.code === "permission-denied") {
+        msg = `Firestore rejected delete (permission denied). Ensure users/${user?.uid ?? "YOUR_UID"} has userType exactly admin (lowercase) and deploy firestore.rules.`;
+      }
       setError(msg);
     } finally {
       setDeleteBusy(false);
@@ -269,7 +297,7 @@ export function AdminEditProductView({ catalogSlug }: Props) {
           There is no document at <code className="rounded bg-zinc-100 px-1 text-xs">catalog_products/{catalogSlug}</code>
           . Code-only pieces are edited in <code className="rounded bg-zinc-100 px-1 text-xs">src/lib/site.ts</code>. To
           add a new Firestore row (including an override for an existing code slug), use{" "}
-          <Link href="/admin/catalog/new" className="font-semibold text-[var(--lf-purple)] hover:underline">
+          <Link href="/admin/catalog/add" className="font-semibold text-[var(--lf-purple)] hover:underline">
             Add product
           </Link>
           .

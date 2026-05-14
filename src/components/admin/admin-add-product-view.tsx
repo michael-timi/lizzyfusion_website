@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FirebaseError } from "firebase/app";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import type { CatalogProduct } from "@/lib/catalog";
 import {
@@ -105,6 +107,7 @@ function imageFileExtension(mime: string): string {
 }
 
 export function AdminAddProductView() {
+  const router = useRouter();
   const db = useMemo(() => getFirebaseDb(), []);
   const storage = useMemo(() => getFirebaseStorage(), []);
   const { user, isAdmin, profileLoading } = useFirebaseAuth();
@@ -381,10 +384,32 @@ export function AdminAddProductView() {
       return;
     }
 
+    const leadT = lead.trim();
+    const descriptionT = description.trim();
+    const nameT = name.trim();
+    const tagT = tag.trim();
+    if (nameT.length >= 200) {
+      setError("Product name must be under 200 characters (Firestore catalogue limit). Shorten the name and try again.");
+      return;
+    }
+    if (tagT.length >= 120) {
+      setError("Collection tag must be under 120 characters. Shorten the tag and try again.");
+      return;
+    }
+    if (leadT.length > 4000) {
+      setError("Lead time / fulfilment copy must be at most 4,000 characters. Shorten the lead field and try again.");
+      return;
+    }
+    if (descriptionT.length > 20_000) {
+      setError("Description must be at most 20,000 characters. Shorten the description and try again.");
+      return;
+    }
+
     setBusy(true);
     let sourcePath: string | null = null;
     let heroPath: string | null = null;
     const galleryPaths: string[] = [];
+    let cataloguePayloadForDebug: CatalogProduct | undefined;
     try {
       const ref = doc(db, "catalog_products", s);
       const existing = await getDoc(ref);
@@ -421,12 +446,12 @@ export function AdminAddProductView() {
 
       const payload: CatalogProduct = {
         slug: s,
-        name: name.trim(),
-        tag: tag.trim(),
+        name: nameT,
+        tag: tagT,
         price,
         ...(compareAtPrice !== undefined ? { compareAtPrice } : {}),
-        lead: lead.trim(),
-        description: description.trim(),
+        lead: leadT,
+        description: descriptionT,
         image: heroUp.downloadUrl,
         ...(sourceUp ? { sourceImage: sourceUp.downloadUrl } : {}),
         ...(galleryImageUrls !== undefined ? { galleryImageUrls } : {}),
@@ -438,10 +463,12 @@ export function AdminAddProductView() {
         ...(colourAvailabilityNotes.trim() ? { colourAvailabilityNotes: colourAvailabilityNotes.trim() } : {}),
       };
 
+      cataloguePayloadForDebug = payload;
       await setDoc(ref, payload);
       // Invalidate the storefront catalogue cache so the "View on storefront" link below works
       // immediately instead of 404'ing until the unstable_cache TTL expires.
       await requestCatalogRevalidation(user, s);
+      router.refresh();
       setDoneSlug(s);
       setSlug("");
       setName("");
@@ -470,6 +497,19 @@ export function AdminAddProductView() {
       setColourAvailabilityNotes("");
       setSuggestAppliedAt(null);
     } catch (err) {
+      const payloadSummary = cataloguePayloadForDebug && {
+        slug: cataloguePayloadForDebug.slug,
+        price: cataloguePayloadForDebug.price,
+        compareAtPrice: cataloguePayloadForDebug.compareAtPrice,
+        fieldKeys: Object.keys(cataloguePayloadForDebug),
+        heroImageUrlLength: cataloguePayloadForDebug.image?.length,
+        heroImageUrlPrefix: cataloguePayloadForDebug.image?.slice(0, 48),
+      };
+      const firebaseMeta =
+        err instanceof FirebaseError
+          ? { firebaseCode: err.code, firebaseMessage: err.message }
+          : {};
+      console.error("[admin/catalog/add] publish failed", { slug: s, uid: user?.uid, payloadSummary, ...firebaseMeta }, err);
       for (const p of galleryPaths) {
         if (storage) {
           try {
@@ -493,7 +533,10 @@ export function AdminAddProductView() {
           /* best-effort */
         }
       }
-      const msg = err instanceof Error ? err.message : "Could not save product.";
+      let msg = err instanceof Error ? err.message : "Could not save product.";
+      if (err instanceof FirebaseError && err.code === "permission-denied") {
+        msg = `Firestore rejected this save (permission denied). If users/${user?.uid ?? "YOUR_UID"} already has userType admin, the payload likely failed catalogue validation (e.g. name/tag/lead/description length limits, https image URL). Deploy the latest firestore.rules (npm run firebase:deploy:rules).`;
+      }
       setError(msg);
     } finally {
       setBusy(false);

@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [{ source: "/admin/catalog/new", destination: "/admin/catalog/add", permanent: true }];
+  },
+  async rewrites() {
+    // Browsers and probes still hit `/favicon.ico` by default; we only ship `public/icon.png`.
+    return [{ source: "/favicon.ico", destination: "/icon.png" }];
+  },
   images: {
     remotePatterns: [
       {

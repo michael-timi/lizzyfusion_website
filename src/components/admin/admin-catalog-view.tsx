@@ -34,7 +34,7 @@ export async function AdminCatalogView() {
           </p>
         </div>
         <Link
-          href="/admin/catalog/new"
+          href="/admin/catalog/add"
           className="shrink-0 rounded-full bg-[var(--lf-purple-deep)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple)]"
         >
           Add product
