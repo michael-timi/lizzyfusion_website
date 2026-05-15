@@ -63,10 +63,9 @@ describe("productOgImageUrl", () => {
     else process.env.NEXT_PUBLIC_SITE_URL = prev;
   });
 
-  it("routes remote images through Next image optimizer", () => {
-    const src = "https://cdn.example/hero.jpg";
-    expect(productOgImageUrl(src)).toBe(
-      `https://lizzyfusion.example/_next/image?url=${encodeURIComponent(src)}&w=1200&q=75`,
+  it("points at the public OG proxy route for the slug", () => {
+    expect(productOgImageUrl("aura-ruffled-brocade-dress")).toBe(
+      "https://lizzyfusion.example/api/og/product/aura-ruffled-brocade-dress",
     );
   });
 });

@@ -22,17 +22,11 @@ export function productShareImageUrl(image: string): string {
 }
 
 /**
- * OG / Twitter preview image — served via Next image optimization so crawlers get a
- * smaller public file (Firebase originals are often multi‑MB with `cache-control: private`).
+ * OG / Twitter preview image URL — short public path that proxies a resized product photo
+ * with crawler-friendly headers (see `/api/og/product/[slug]`).
  */
-export function productOgImageUrl(image: string): string {
-  const source = productShareImageUrl(image);
-  const site = publicSiteUrl();
-  if (source.startsWith("http://") || source.startsWith("https://")) {
-    const params = new URLSearchParams({ url: source, w: "1200", q: "75" });
-    return `${site}/_next/image?${params.toString()}`;
-  }
-  return source;
+export function productOgImageUrl(slug: string): string {
+  return new URL(`/api/og/product/${encodeURIComponent(slug)}`, publicSiteUrl()).href;
 }
 
 /** Product copy without URL (pair with `productShareUrl` in Web Share API). */
