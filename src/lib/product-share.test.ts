@@ -1,10 +1,12 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import {
+  productEnquiryMessage,
   productOgImageUrl,
   productShareBlurb,
   productShareImageUrl,
   productShareMessage,
   productShareUrl,
+  productWhatsappEnquiryHref,
   productWhatsappShareHref,
 } from "@/lib/product-share";
 
@@ -111,6 +113,61 @@ describe("productShareMessage", () => {
     expect(msg).toContain("Ready-to-wear");
     expect(msg).toContain("₦50,000");
     expect(msg).toContain("https://lizzyfusion.example/shop/test-piece");
+  });
+});
+
+describe("productEnquiryMessage", () => {
+  const prev = process.env.NEXT_PUBLIC_SITE_URL;
+
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://lizzyfusion.example";
+  });
+
+  afterEach(() => {
+    if (prev === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
+    else process.env.NEXT_PUBLIC_SITE_URL = prev;
+  });
+
+  it("includes exactly one product URL on the last line", () => {
+    const msg = productEnquiryMessage({
+      slug: "test-piece",
+      name: "Test Abaya",
+      tag: "Ready-to-wear",
+      price: 50000,
+      image: "https://cdn.example/a.jpg",
+    });
+    const url = "https://lizzyfusion.example/shop/test-piece";
+    expect(msg.split(url)).toHaveLength(2);
+    expect(msg.trimEnd().endsWith(url)).toBe(true);
+  });
+
+  it("builds PDP enquiry with size and swatch", () => {
+    const msg = productEnquiryMessage(
+      {
+        slug: "x",
+        name: "Piece",
+        tag: "RTW",
+        price: 1000,
+        image: "https://cdn.example/a.jpg",
+      },
+      { size: "UK 10 / M", swatchIndex: 1, styleLabel: "Emerald" },
+    );
+    expect(msg).toContain("Preferred size: UK 10 / M");
+    expect(msg).toContain("swatch 2");
+  });
+});
+
+describe("productWhatsappEnquiryHref", () => {
+  it("returns wa.me with encoded enquiry text", () => {
+    const href = productWhatsappEnquiryHref({
+      slug: "x",
+      name: "Piece",
+      tag: "RTW",
+      price: 1000,
+      image: "https://cdn.example/a.jpg",
+    });
+    expect(href).toMatch(/^https:\/\/wa\.me\//);
+    expect(href).toContain(encodeURIComponent("product enquiry"));
   });
 });
 

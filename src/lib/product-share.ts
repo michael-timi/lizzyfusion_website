@@ -52,3 +52,56 @@ export function productShareMessage(product: ProductShareInput, styleLabel?: str
 export function productWhatsappShareHref(product: ProductShareInput, styleLabel?: string): string {
   return whatsappHref(productShareMessage(product, styleLabel));
 }
+
+export type ProductWhatsappEnquiryOptions = {
+  intent?: "product" | "wishlist";
+  styleLabel?: string;
+  /** PDP: selected size line */
+  size?: string;
+  /** PDP: zero-based swatch index */
+  swatchIndex?: number;
+};
+
+/**
+ * Pre-filled WhatsApp enquiry copy with exactly one product URL (last line) so chat apps
+ * can unfurl the PDP image without duplicating the link in the message body.
+ */
+export function productEnquiryMessage(
+  product: ProductShareInput,
+  options: ProductWhatsappEnquiryOptions = {},
+): string {
+  const intent = options.intent ?? "product";
+  const header =
+    intent === "wishlist"
+      ? `*${site.name} — wishlist enquiry*`
+      : `*${site.name} — product enquiry*`;
+
+  const priceLine = options.styleLabel
+    ? catalogWhatsappPriceLine(
+        { ...product, price: catalogDisplayPrice(product) },
+        options.styleLabel,
+      )
+    : catalogWhatsappPriceLine(product);
+
+  const lines = [header, `Product: ${product.name}`, priceLine];
+
+  if (options.size) {
+    lines.push(`Colour preference: swatch ${(options.swatchIndex ?? 0) + 1} (see PDP)`);
+    lines.push(`Preferred size: ${options.size}`);
+    lines.push("My name and any tweaks (lining, length, sleeves):");
+    lines.push("(please fill before sending)");
+  } else {
+    lines.push("My name / size / colour preference:");
+    lines.push("(please fill before sending)");
+  }
+
+  lines.push(productShareUrl(product.slug));
+  return lines.join("\n");
+}
+
+export function productWhatsappEnquiryHref(
+  product: ProductShareInput,
+  options?: ProductWhatsappEnquiryOptions,
+): string {
+  return whatsappHref(productEnquiryMessage(product, options));
+}
