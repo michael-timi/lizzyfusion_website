@@ -26,13 +26,7 @@ export function productShareImageUrl(image: string): string {
  * small file without `/_next/image` attachment headers or multi‑MB Storage PNGs.
  */
 export function productOgImageUrl(image: string): string {
-  const raw = productShareImageUrl(image);
-  let source = raw;
-  try {
-    source = decodeURIComponent(raw);
-  } catch {
-    /* keep raw */
-  }
+  const source = productShareImageUrl(image);
 
   if (!source.startsWith("https://")) {
     return source;

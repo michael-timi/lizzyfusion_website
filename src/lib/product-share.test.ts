@@ -64,9 +64,10 @@ describe("productOgImageUrl", () => {
   });
 
   it("points remote images at the OG resize proxy", () => {
-    const source = "https://firebasestorage.googleapis.com/v0/b/bucket/o/path%2Fhero.png?alt=media";
+    const source =
+      "https://firebasestorage.googleapis.com/v0/b/bucket/o/users/uid/hero.png?alt=media";
     expect(productOgImageUrl(source)).toBe(
-      "https://lizzyfusion.example/api/og/image?url=https%3A%2F%2Ffirebasestorage.googleapis.com%2Fv0%2Fb%2Fbucket%2Fo%2Fpath%2Fhero.png%3Falt%3Dmedia",
+      "https://lizzyfusion.example/api/og/image?url=https%3A%2F%2Ffirebasestorage.googleapis.com%2Fv0%2Fb%2Fbucket%2Fo%2Fusers%2Fuid%2Fhero.png%3Falt%3Dmedia",
     );
   });
 
