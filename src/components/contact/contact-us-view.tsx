@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
+import { trackGenerateLead } from "@/lib/analytics-events";
 import { CraftCareBreadcrumb } from "@/components/craft-care/craft-care-breadcrumb";
 import { mailtoHref, site, whatsappHref } from "@/lib/site";
 
@@ -77,6 +78,7 @@ export function ContactUsView() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!privacy || !subject) return;
+    void trackGenerateLead("contact_form", subject);
     const body = [
       `Name: ${fullName || "(not provided)"}`,
       `Reply email: ${email || "(not provided)"}`,

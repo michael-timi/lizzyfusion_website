@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
+import { trackSelectContent } from "@/lib/analytics-events";
 import type { CatalogProduct } from "@/lib/catalog";
 import { site } from "@/lib/site";
 
@@ -48,6 +49,7 @@ export function LookbookScreen({ looks }: { looks: readonly ResolvedLook[] }) {
   const pair = look.pair;
 
   const selectDay = (i: number) => {
+    void trackSelectContent("lookbook_day", looks[i]!.label);
     router.replace(`/lookbook?day=${encodeURIComponent(looks[i]!.label)}`, { scroll: false });
   };
 

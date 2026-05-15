@@ -1,0 +1,296 @@
+/**
+ * Typed GA4 / Firebase Analytics events for Lizzy Fusion storefront flows.
+ * Requires `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` (or `FIREBASE_WEBAPP_CONFIG` with measurementId).
+ */
+
+import { logAnalyticsEvent, type AnalyticsEventParamValue } from "@/lib/firebase-analytics";
+import {
+  checkoutFunnelStep,
+  classifyAnalyticsArea,
+  inferWhatsappLocation,
+  productSlugFromPath,
+} from "@/lib/analytics-route";
+
+export type AnalyticsItem = {
+  item_id: string;
+  item_name: string;
+  price?: number;
+  quantity?: number;
+  item_category?: string;
+};
+
+type EventParams = Record<string, AnalyticsEventParamValue>;
+
+function clampString(value: string, max = 100): string {
+  const t = value.trim();
+  return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
+}
+
+function gaItems(items: AnalyticsItem[]): EventParams {
+  return {
+    items: items.map((i) => ({
+      item_id: clampString(i.item_id, 64),
+      item_name: clampString(i.item_name, 100),
+      ...(i.price !== undefined ? { price: i.price } : {}),
+      ...(i.quantity !== undefined ? { quantity: i.quantity } : {}),
+      ...(i.item_category ? { item_category: clampString(i.item_category, 64) } : {}),
+    })),
+  };
+}
+
+function currencyValue(amount: number, currency = "NGN"): EventParams {
+  return { currency, value: amount };
+}
+
+async function track(eventName: string, params?: EventParams): Promise<void> {
+  await logAnalyticsEvent(eventName, params);
+}
+
+// ——— Page & session ———
+
+export async function trackPageView(pathname: string, pageTitle: string): Promise<void> {
+  const area = classifyAnalyticsArea(pathname);
+  const funnel = checkoutFunnelStep(pathname);
+  const slug = productSlugFromPath(pathname);
+  await track("page_view", {
+    page_path: pathname,
+    page_title: clampString(pageTitle, 120),
+    page_section: area,
+    ...(funnel ? { checkout_step: funnel } : {}),
+    ...(slug ? { item_id: slug } : {}),
+  });
+}
+
+export async function trackCheckoutFunnelView(pathname: string): Promise<void> {
+  const step = checkoutFunnelStep(pathname);
+  if (!step) return;
+  switch (step) {
+    case "cart":
+      await trackBeginCheckoutFromPath(pathname);
+      break;
+    case "info":
+      await track("begin_checkout", { checkout_step: "info" });
+      break;
+    case "shipping":
+      await track("add_shipping_info", { checkout_step: "shipping" });
+      break;
+    case "payment":
+      await track("add_payment_info", { checkout_step: "payment" });
+      break;
+    case "success":
+      await track("checkout_success_view", { checkout_step: "success", transaction_method: "whatsapp" });
+      break;
+    case "failure":
+      await track("checkout_failure", { checkout_step: "failure" });
+      break;
+    default:
+      break;
+  }
+}
+
+async function trackBeginCheckoutFromPath(pathname: string): Promise<void> {
+  if (typeof window === "undefined") return;
+  const { getCartLines } = await import("@/lib/cart");
+  const { resolveCartLineDisplay } = await import("@/lib/site");
+  const { checkoutTotals } = await import("@/lib/checkout-totals");
+  const lines = getCartLines();
+  if (lines.length === 0) {
+    await track("view_cart", { page_path: pathname });
+    return;
+  }
+  const items: AnalyticsItem[] = [];
+  for (const line of lines) {
+    const p = resolveCartLineDisplay(line);
+    if (!p) continue;
+    items.push({
+      item_id: p.slug,
+      item_name: p.name,
+      price: p.price,
+      quantity: line.qty,
+    });
+  }
+  const totals = checkoutTotals(lines);
+  await track("begin_checkout", {
+    ...currencyValue(totals.subtotal),
+    ...gaItems(items),
+    item_count: totals.count,
+  });
+}
+
+// ——— E‑commerce ———
+
+export async function trackAddToCart(item: AnalyticsItem): Promise<void> {
+  await track("add_to_cart", {
+    ...currencyValue((item.price ?? 0) * (item.quantity ?? 1)),
+    ...gaItems([item]),
+  });
+}
+
+export async function trackRemoveFromCart(item: AnalyticsItem): Promise<void> {
+  await track("remove_from_cart", {
+    ...currencyValue((item.price ?? 0) * (item.quantity ?? 1)),
+    ...gaItems([item]),
+  });
+}
+
+export async function trackViewItem(item: AnalyticsItem): Promise<void> {
+  await track("view_item", {
+    ...currencyValue(item.price ?? 0),
+    ...gaItems([item]),
+  });
+}
+
+export async function trackViewItemList(
+  listId: string,
+  items: AnalyticsItem[],
+  extra?: { search_term?: string },
+): Promise<void> {
+  await track("view_item_list", {
+    item_list_id: clampString(listId, 64),
+    item_list_name: clampString(listId, 100),
+    ...gaItems(items.slice(0, 30)),
+    ...(extra?.search_term ? { search_term: clampString(extra.search_term, 80) } : {}),
+  });
+}
+
+export async function trackSearch(searchTerm: string, resultCount: number): Promise<void> {
+  await track("search", {
+    search_term: clampString(searchTerm, 80),
+    result_count: resultCount,
+  });
+}
+
+export async function trackPurchase(params: {
+  value: number;
+  items: AnalyticsItem[];
+  itemCount: number;
+}): Promise<void> {
+  await track("purchase", {
+    ...currencyValue(params.value),
+    ...gaItems(params.items),
+    item_count: params.itemCount,
+    transaction_method: "whatsapp",
+  });
+}
+
+// ——— Wishlist ———
+
+export async function trackWishlistChange(slug: string, added: boolean): Promise<void> {
+  await track(added ? "add_to_wishlist" : "remove_from_wishlist", {
+    item_id: clampString(slug, 64),
+  });
+}
+
+// ——— Auth ———
+
+export async function trackLogin(method: "email" | "google"): Promise<void> {
+  await track("login", { method });
+}
+
+export async function trackSignUp(method: "email" | "google"): Promise<void> {
+  await track("sign_up", { method });
+}
+
+export async function trackLogout(): Promise<void> {
+  await track("logout", {});
+}
+
+export async function trackPasswordResetRequest(): Promise<void> {
+  await track("password_reset_request", {});
+}
+
+// ——— Engagement ———
+
+export async function trackShare(params: {
+  method: string;
+  contentType: string;
+  itemId?: string;
+}): Promise<void> {
+  await track("share", {
+    method: clampString(params.method, 32),
+    content_type: clampString(params.contentType, 32),
+    ...(params.itemId ? { item_id: clampString(params.itemId, 64) } : {}),
+  });
+}
+
+export async function trackWhatsappClick(location: string, itemId?: string): Promise<void> {
+  await track("whatsapp_click", {
+    link_location: clampString(location, 48),
+    ...(itemId ? { item_id: clampString(itemId, 64) } : {}),
+  });
+}
+
+export async function trackGenerateLead(formId: string, intent?: string): Promise<void> {
+  await track("generate_lead", {
+    form_id: clampString(formId, 48),
+    ...(intent ? { intent: clampString(intent, 80) } : {}),
+  });
+}
+
+export async function trackSelectContent(contentType: string, contentId: string): Promise<void> {
+  await track("select_content", {
+    content_type: clampString(contentType, 32),
+    content_id: clampString(contentId, 64),
+  });
+}
+
+export async function trackBlogEngagement(
+  action: "like" | "comment" | "reply" | "edit" | "delete",
+  postSlug: string,
+): Promise<void> {
+  await track("blog_engagement", {
+    engagement_action: action,
+    content_id: clampString(postSlug, 64),
+  });
+}
+
+export async function trackLoadMore(context: string, visibleCount: number): Promise<void> {
+  await track("load_more", {
+    context: clampString(context, 32),
+    visible_count: visibleCount,
+  });
+}
+
+export async function trackFilterApply(context: string, filterSummary: string): Promise<void> {
+  await track("filter_apply", {
+    context: clampString(context, 32),
+    filter_summary: clampString(filterSummary, 120),
+  });
+}
+
+export async function trackSortApply(context: string, sortKey: string): Promise<void> {
+  await track("sort_apply", {
+    context: clampString(context, 32),
+    sort_key: clampString(sortKey, 32),
+  });
+}
+
+export async function trackMailtoClick(location: string, subject?: string): Promise<void> {
+  await track("mailto_click", {
+    link_location: clampString(location, 48),
+    ...(subject ? { subject: clampString(subject, 80) } : {}),
+  });
+}
+
+/** Document-level handler for outbound WhatsApp / mailto (set up in FirebaseClientInit). */
+export function handleOutboundLinkClick(pathname: string, anchor: HTMLAnchorElement): void {
+  const href = anchor.href;
+  if (!href) return;
+  const explicit = anchor.getAttribute("data-lf-analytics");
+  if (href.includes("wa.me/") || href.includes("api.whatsapp.com")) {
+    const location = explicit ?? inferWhatsappLocation(pathname);
+    const slug = productSlugFromPath(pathname) ?? anchor.getAttribute("data-lf-product-slug") ?? undefined;
+    void trackWhatsappClick(location, slug ?? undefined);
+    return;
+  }
+  if (href.startsWith("mailto:")) {
+    const location = explicit ?? inferWhatsappLocation(pathname);
+    let subject: string | undefined;
+    try {
+      subject = new URL(href).searchParams.get("subject") ?? undefined;
+    } catch {
+      subject = undefined;
+    }
+    void trackMailtoClick(location, subject ?? undefined);
+  }
+}

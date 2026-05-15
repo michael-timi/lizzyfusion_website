@@ -1,6 +1,7 @@
 import { FirebaseError } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
+  getAdditionalUserInfo,
   getAuth,
   GoogleAuthProvider,
   sendEmailVerification,
@@ -11,6 +12,7 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
+import { trackLogin, trackLogout, trackPasswordResetRequest, trackSignUp } from "@/lib/analytics-events";
 import { getFirebaseApp } from "@/lib/firebase";
 
 const googleProvider = new GoogleAuthProvider();
@@ -27,8 +29,11 @@ export function getFirebaseAuth() {
 export async function signInWithGoogle(): Promise<User> {
   const auth = getFirebaseAuth();
   if (!auth) throw new Error("Firebase is not configured. Add your web app keys to .env.local.");
-  const { user } = await signInWithPopup(auth, googleProvider);
-  return user;
+  const credential = await signInWithPopup(auth, googleProvider);
+  const extra = getAdditionalUserInfo(credential);
+  if (extra?.isNewUser) void trackSignUp("google");
+  else void trackLogin("google");
+  return credential.user;
 }
 
 /** Dispatched on `window` after `signOutUser()` completes (browser only). */
@@ -38,6 +43,7 @@ export async function signOutUser(): Promise<void> {
   const auth = getFirebaseAuth();
   if (!auth) return;
   await signOut(auth);
+  void trackLogout();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(LF_SIGNED_OUT_EVENT));
   }
@@ -47,6 +53,7 @@ export async function signInWithEmailPassword(email: string, password: string): 
   const auth = getFirebaseAuth();
   if (!auth) throw new Error("Firebase is not configured. Add your web app keys to .env.local.");
   const { user } = await signInWithEmailAndPassword(auth, email.trim(), password);
+  void trackLogin("email");
   return user;
 }
 
@@ -62,6 +69,7 @@ export async function registerWithEmailPassword(
   const displayName = `${firstName.trim()} ${lastName.trim()}`.trim();
   if (displayName) await updateProfile(user, { displayName });
   await sendEmailVerification(user);
+  void trackSignUp("email");
   return user;
 }
 
@@ -77,6 +85,7 @@ export async function sendPasswordReset(email: string): Promise<void> {
   } else {
     await sendPasswordResetEmail(auth, email.trim());
   }
+  void trackPasswordResetRequest();
 }
 
 export function firebaseAuthErrorMessage(error: unknown): string {

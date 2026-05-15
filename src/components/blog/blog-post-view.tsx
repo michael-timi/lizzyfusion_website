@@ -98,7 +98,11 @@ export function BlogPostView({ slug }: { slug: string }) {
     setCommentErr(null);
     try {
       if (liked) await removeLike(post.id, user.uid);
-      else await setLike(post.id, user.uid);
+      else {
+        await setLike(post.id, user.uid);
+        const { trackBlogEngagement } = await import("@/lib/analytics-events");
+        void trackBlogEngagement("like", slug);
+      }
     } catch (e) {
       setCommentErr(e instanceof Error ? e.message : "Could not update like.");
     } finally {
@@ -117,6 +121,8 @@ export function BlogPostView({ slug }: { slug: string }) {
     setCommentErr(null);
     try {
       await addComment(post.id, user, t, parentId);
+      const { trackBlogEngagement } = await import("@/lib/analytics-events");
+      void trackBlogEngagement(parentId ? "reply" : "comment", slug);
       clear();
       setReplyTo(null);
       setReplyBody("");

@@ -13,7 +13,7 @@ Official marketing and storefront-style site for **Lizzy Fusion** — modest fas
 - **Firebase Authentication** (email/password + Google) via `src/lib/firebase-auth.ts` and `src/lib/firebase.ts`
 - **Firestore** (`src/lib/firebase-db.ts`): checkout order snapshots → `orders` collection (`src/lib/firebase-orders.ts`); signed-in users get a `users/{uid}` profile from `src/lib/firebase-user-profile.ts` with `userType` (`user` by default — promote to `admin` in the console or via Admin SDK only)
 - **Firebase Storage** (`src/lib/firebase-storage.ts`): rules in `storage.rules` — per-user paths `users/{uid}/**` for signed-in clients
-- **Firebase Analytics** (`src/lib/firebase-analytics.ts`): loads when `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` is set; `FirebaseClientInit` logs `page_view` on App Router navigations
+- **Firebase Analytics / GA4** (`src/lib/firebase-analytics.ts`, `src/lib/analytics-events.ts`): loads when `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` is set; tracks page views, e‑commerce (cart, checkout, purchase), auth, wishlist, search/filters, WhatsApp/mailto outbound clicks, lead forms, contact, blog engagement, and share actions
 - **Checkout sign-in**: only `/checkout/info`, `/checkout/shipping`, and `/checkout/payment` require a signed-in user (see `src/app/checkout/(protected)/`). **Success / failure** pages do not, so a finished checkout still shows a confirmation if the session ends.
 - **Firestore orders**: after “Pay on WhatsApp”, a **session snapshot** of the bag and shipping form (no card fields) is written to the `orders` collection when the user is still signed in—see `firestore.rules`, `src/lib/firebase-orders.ts`, and `src/lib/checkout-order-snapshot.ts`. Deploy rules with the Firebase CLI after enabling Firestore in the console.
 

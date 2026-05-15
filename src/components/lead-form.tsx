@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { trackGenerateLead } from "@/lib/analytics-events";
 import { mailtoHref, site, whatsappHref } from "@/lib/site";
 
 type LeadFormProps = {
@@ -37,6 +38,7 @@ export function LeadForm({ intent, extraFields = [] }: LeadFormProps) {
       className="space-y-4 rounded-2xl border border-[var(--lf-line)] bg-white p-6 shadow-sm"
       onSubmit={(e) => {
         e.preventDefault();
+        void trackGenerateLead("lead_form", intent);
         window.open(wa, "_blank", "noopener,noreferrer");
       }}
     >
