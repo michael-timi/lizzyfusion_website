@@ -63,11 +63,10 @@ describe("productOgImageUrl", () => {
     else process.env.NEXT_PUBLIC_SITE_URL = prev;
   });
 
-  it("points at the public OG image proxy with the source URL", () => {
-    const src = "https://cdn.example/hero.jpg";
-    const href = productOgImageUrl(src);
-    expect(href.startsWith("https://lizzyfusion.example/api/og/image?")).toBe(true);
-    expect(href).toContain(encodeURIComponent(src));
+  it("returns a decoded absolute HTTPS image URL for crawlers", () => {
+    const encoded =
+      "https://cdn.example/path%2Fhero.jpg";
+    expect(productOgImageUrl(encoded)).toBe("https://cdn.example/path/hero.jpg");
   });
 });
 
