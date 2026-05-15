@@ -22,11 +22,19 @@ export function productShareImageUrl(image: string): string {
 }
 
 /**
- * OG / Twitter preview image URL — short public path that proxies a resized product photo
- * with crawler-friendly headers (see `/api/og/product/[slug]`).
+ * OG / Twitter preview image URL — proxies the product photo via `/api/og/image` with
+ * crawler-friendly headers (no Firestore lookup at request time).
  */
-export function productOgImageUrl(slug: string): string {
-  return new URL(`/api/og/product/${encodeURIComponent(slug)}`, publicSiteUrl()).href;
+export function productOgImageUrl(image: string): string {
+  let source = productShareImageUrl(image);
+  try {
+    source = decodeURIComponent(source);
+  } catch {
+    /* keep source */
+  }
+  const api = new URL("/api/og/image", publicSiteUrl());
+  api.searchParams.set("url", source);
+  return api.href;
 }
 
 /** Product copy without URL (pair with `productShareUrl` in Web Share API). */

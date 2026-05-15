@@ -7,7 +7,7 @@ export function buildProductPageMetadata(product: CatalogProduct, slug: string):
   const desc =
     product.description.length > 155 ? `${product.description.slice(0, 155)}…` : product.description;
   const url = productShareUrl(slug);
-  const image = productOgImageUrl(slug);
+  const image = productOgImageUrl(product.image);
   const title = `${product.name} · ${site.name}`;
 
   return {
