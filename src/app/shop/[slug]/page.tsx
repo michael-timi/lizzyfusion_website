@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductDetailView } from "@/components/shop/product-detail-view";
 import { getCatalogProductBySlug, getMergedCatalog } from "@/lib/catalog";
+import { buildProductPageMetadata } from "@/lib/product-metadata";
 import { catalogProductJsonLd } from "@/lib/product-json-ld";
 import { buildPdpGallery } from "@/lib/catalog-style-variants";
-import { galleryUrlsForProduct, site } from "@/lib/site";
+import { galleryUrlsForProduct } from "@/lib/site";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -19,29 +20,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!product) {
     return { title: "Product", robots: { index: false, follow: true } };
   }
-  const desc =
-    product.description.length > 155 ? `${product.description.slice(0, 155)}…` : product.description;
-  const canonical = `/shop/${slug}`;
-  return {
-    title: `${product.name} · Shop`,
-    description: `${desc} Prices in Naira · ${site.name}.`,
-    alternates: { canonical },
-    robots: { index: true, follow: true, "max-image-preview": "large" },
-    openGraph: {
-      title: `${product.name} · ${site.name}`,
-      description: desc,
-      type: "website",
-      url: canonical,
-      locale: "en_NG",
-      images: [{ url: product.image, alt: product.name, width: 1200, height: 1200 }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `${product.name} · ${site.name}`,
-      description: desc,
-      images: [product.image],
-    },
-  };
+  return buildProductPageMetadata(product, slug);
 }
 
 export default async function ShopProductPage({ params }: PageProps) {

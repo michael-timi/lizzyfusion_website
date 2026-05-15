@@ -13,6 +13,7 @@ import {
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { formatNgn, site, whatsappHref } from "@/lib/site";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
+import { ProductShareButton } from "./product-share-button";
 import { WishlistHeart } from "./wishlist-heart";
 
 type Props = {
@@ -198,7 +199,13 @@ export function ProductDetailView({ product, gallery, variantIdsByIndex = [], re
               className="object-cover object-top"
               sizes="(max-width: 1024px) 100vw, 55vw"
             />
-            <WishlistHeart slug={product.slug} className="absolute right-3 top-3 z-10" />
+            <div className="absolute right-3 top-3 z-10 flex flex-col gap-2">
+              <WishlistHeart slug={product.slug} />
+              <ProductShareButton
+                product={product}
+                styleLabel={selectedStyleLabel}
+              />
+            </div>
           </div>
           {hasStyles && activeStyleIds.length > 0 ? (
             <p className="text-center text-xs leading-relaxed text-[var(--lf-muted)]">
@@ -318,14 +325,22 @@ export function ProductDetailView({ product, gallery, variantIdsByIndex = [], re
             ))}
           </select>
 
-          <a
-            href={waHref}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-8 flex w-full items-center justify-center bg-[var(--lf-purple-deep)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple)]"
-          >
-            Enquire on WhatsApp — {formatNgn(priceView.price)}
-          </a>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noreferrer"
+              className="flex flex-1 items-center justify-center bg-[var(--lf-purple-deep)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple)]"
+            >
+              Enquire on WhatsApp — {formatNgn(priceView.price)}
+            </a>
+            <ProductShareButton
+              product={product}
+              styleLabel={selectedStyleLabel}
+              variant="button"
+              className="flex-1"
+            />
+          </div>
 
           <button
             type="button"
@@ -408,7 +423,10 @@ export function ProductDetailView({ product, gallery, variantIdsByIndex = [], re
                       sizes="(max-width: 768px) 100vw, 33vw"
                     />
                   </Link>
-                  <WishlistHeart slug={p.slug} className="absolute right-3 top-3 z-10" />
+                  <div className="absolute right-3 top-3 z-10 flex flex-col gap-2">
+                    <WishlistHeart slug={p.slug} />
+                    <ProductShareButton product={p} />
+                  </div>
                 </div>
                 <div className="p-4 sm:p-5">
                   <p className="text-xs font-medium uppercase tracking-wider text-[var(--lf-muted)]">{p.tag}</p>
