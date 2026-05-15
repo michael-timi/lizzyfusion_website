@@ -198,12 +198,12 @@ export async function verifyAdminFromIdToken(idToken: string): Promise<
         },
       };
     }
-    if (data?.userType !== "admin") {
+    if (typeof data?.userType !== "string" || data.userType.toLowerCase() !== "admin") {
       return {
         ok: false,
         failure: {
           kind: "not_admin",
-          detail: `Firestore users/${decoded.uid} must have userType "admin" (currently: ${String(data?.userType ?? "unset")}).`,
+          detail: `Firestore users/${decoded.uid} must have userType admin (any common casing; currently: ${String(data?.userType ?? "unset")}).`,
         },
       };
     }

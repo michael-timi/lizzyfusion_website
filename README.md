@@ -34,6 +34,49 @@ Deploy Firestore + Storage rules together:
 firebase deploy --only firestore:rules,storage
 ```
 
+## Firebase App Hosting (pre-deploy)
+
+Use this before `npm run firebase:deploy:apphosting` or a GitHub-triggered rollout. Replace the example URL with your real App Hosting origin or custom domain.
+
+**Automated checks (run in this repo)**
+
+```bash
+npm run lint && npm test && npm run build
+```
+
+**App Hosting backend → Environment** (Firebase console → App Hosting → your backend)
+
+| Variable | Purpose |
+| -------- | ------- |
+| `NEXT_PUBLIC_SITE_URL` | Public origin for Open Graph / canonical URLs (HTTPS, no trailing slash), e.g. `https://YOUR-BACKEND--YOUR-PROJECT.us-central1.hosted.app` |
+| `FIREBASE_WEBAPP_CONFIG` **or** `NEXT_PUBLIC_FIREBASE_*` | Client Firebase init (Auth, Firestore, Storage). App Hosting often injects `FIREBASE_WEBAPP_CONFIG` at build time — see [Firebase web config on App Hosting](https://firebase.google.com/docs/app-hosting/firebase-sdks). |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` or `FIREBASE_SERVICE_ACCOUNT_PATH` / `GOOGLE_APPLICATION_CREDENTIALS` | Server: merged catalogue, admin ID token verification, revalidate routes. |
+| `GEMINI_API_KEY` | Optional: admin catalogue AI suggest / hero image routes. |
+
+**Firebase Authentication**
+
+- Sign-in methods: **Email/Password** and **Google** enabled.
+- **Settings → Authorized domains:** include your App Hosting hostname (and `localhost` for local dev). If you use a **custom domain**, add apex and `www` as needed.
+
+**Google Cloud Console** (same GCP project as Firebase)
+
+- **APIs & Services → Credentials → OAuth 2.0 Web client → Authorized JavaScript origins:** include the exact HTTPS origin where the Next app runs (e.g. `https://…hosted.app` and your custom domain if used).
+- If the **Browser** API key uses **HTTP referrer** restrictions, add `https://your-origin/*` for that host.
+
+**Rules**
+
+- After changing `firestore.rules` or `storage.rules`, deploy:  
+  `npm run firebase:deploy:rules`  
+  (or `firebase deploy --only firestore:rules,storage`).
+
+**Post-rollout smoke test (production URL)**
+
+- Home, shop, PDP, login/register, **Continue with Google** on the live origin.
+- `/admin/settings` — **Public site URL** matches `NEXT_PUBLIC_SITE_URL`.
+- `/admin/catalog` — connection banner green when Admin credentials and Firestore are configured on the server.
+
+More studio-facing notes (including custom domain) also appear on **`/admin/settings`** in the app.
+
 ## Local development
 
 ```bash
@@ -68,6 +111,14 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Deploying
 
 This app is a standard Next.js project and can be deployed on [Vercel](https://vercel.com), [Firebase App Hosting](https://firebase.google.com/docs/app-hosting), or any host that supports Node.js. Mirror `.env.local` secrets in the host’s environment UI for production.
+
+**Firebase App Hosting** from this repo:
+
+```bash
+npm run firebase:deploy:apphosting
+```
+
+See **[Firebase App Hosting (pre-deploy)](#firebase-app-hosting-pre-deploy)** above for env vars, Auth, OAuth, and rules. `apphosting.yaml` and `firebase.json` define the linked backend.
 
 ## Repository
 

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
+import { ADMIN_NAV_GROUPS, ADMIN_SECTIONS } from "@/components/admin/admin-nav";
 import { useFirebaseAuth } from "@/components/auth/firebase-auth-provider";
-import { ADMIN_SECTIONS } from "@/components/admin/admin-nav";
 import { getFirebaseDb } from "@/lib/firebase-db";
 import { signOutUser } from "@/lib/firebase-auth";
 import { site } from "@/lib/site";
@@ -19,6 +19,19 @@ function IconMenu({ open }: { open: boolean }) {
       )}
     </svg>
   );
+}
+
+function isNavActive(pathname: string, href: string): boolean {
+  if (pathname === href) return true;
+  if (href === "/admin/catalog") {
+    return (
+      pathname === "/admin/catalog" ||
+      pathname === "/admin/catalog/add" ||
+      pathname.startsWith("/admin/catalog/edit/")
+    );
+  }
+  if (href === "/admin") return pathname === "/admin";
+  return pathname.startsWith(`${href}/`);
 }
 
 export function AdminAppShell({ children }: { children: React.ReactNode }) {
@@ -36,11 +49,16 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
     startTransition(() => setNavOpen(false));
   }, [pathname]);
 
+  const pageTitle =
+    pathname.startsWith("/admin/catalog/edit/")
+      ? "Edit product"
+      : pathname === "/admin/catalog/add"
+        ? "Add product"
+        : ADMIN_SECTIONS.find((s) => isNavActive(pathname, s.href))?.label ?? "Admin";
+
   if (!mounted) {
     return (
-      <div className="min-h-[50vh] bg-zinc-50 px-4 py-20 text-center text-sm text-zinc-500">
-        Loading admin…
-      </div>
+      <div className="min-h-[50vh] bg-zinc-50 px-4 py-20 text-center text-sm text-zinc-500">Loading admin…</div>
     );
   }
 
@@ -61,9 +79,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-[50vh] bg-zinc-50 px-4 py-20 text-center text-sm text-zinc-500">
-        Checking your session…
-      </div>
+      <div className="min-h-[50vh] bg-zinc-50 px-4 py-20 text-center text-sm text-zinc-500">Checking your session…</div>
     );
   }
 
@@ -86,7 +102,9 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
 
   if (profileLoading) {
     return (
-      <div className="min-h-[50vh] bg-zinc-50 px-4 py-20 text-center text-sm text-zinc-500">
+      <div
+        className="min-h-[50vh] bg-zinc-50 px-4 py-20 text-center text-sm text-zinc-500"
+      >
         Loading your profile…
       </div>
     );
@@ -97,32 +115,27 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto max-w-lg px-4 py-20">
         <h1 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">Access restricted</h1>
         <p className="mt-3 text-sm leading-relaxed text-[var(--lf-muted)]">
-          Signed in as <span className="font-medium text-[var(--lf-ink)]">{user.email}</span>, but this account is
-          not marked as an administrator. Promotion happens in the Firebase console: set{" "}
-          <code className="rounded bg-zinc-100 px-1 text-xs">userType</code> to{" "}
-          <code className="rounded bg-zinc-100 px-1 text-xs">admin</code> on your{" "}
-          <code className="rounded bg-zinc-100 px-1 text-xs">users/{`{uid}`}</code> document.
+          Signed in as <span className="font-medium text-[var(--lf-ink)]">{user.email}</span>, but this account is not
+          marked as an administrator.
         </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link href="/" className="text-sm font-semibold text-[var(--lf-purple)] underline">
-            Back to storefront
-          </Link>
-        </div>
+        <Link href="/" className="mt-8 inline-block text-sm font-semibold text-[var(--lf-purple)] underline">
+          Back to storefront
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100dvh-3rem)] bg-zinc-100 lg:flex">
+    <div className="min-h-[calc(100dvh-3rem)] bg-gradient-to-br from-zinc-100 via-zinc-50 to-violet-50/30 lg:flex">
       <aside
-        className={`fixed inset-y-0 left-0 z-[130] flex w-[min(18rem,88vw)] flex-col border-r border-zinc-200 bg-white shadow-xl transition-transform duration-200 lg:static lg:z-0 lg:min-h-screen lg:w-56 lg:translate-x-0 lg:shadow-none ${
+        className={`fixed inset-y-0 left-0 z-[130] flex w-[min(18rem,88vw)] flex-col border-r border-violet-200/40 bg-white shadow-xl transition-transform duration-200 lg:static lg:z-0 lg:min-h-screen lg:w-60 lg:translate-x-0 lg:shadow-none ${
           navOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
         aria-label="Admin navigation"
       >
-        <div className="flex h-14 items-center justify-between border-b border-zinc-100 px-4 lg:h-auto lg:flex-col lg:items-stretch lg:gap-0 lg:border-0 lg:p-0">
-          <div className="lg:border-b lg:border-zinc-100 lg:p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-800">Admin</p>
+        <div className="flex h-14 items-center justify-between border-b border-violet-100 bg-gradient-to-r from-[var(--lf-purple-faint)] to-white px-4 lg:h-auto lg:flex-col lg:items-stretch lg:gap-0 lg:border-0 lg:p-0">
+          <div className="lg:border-b lg:border-violet-100 lg:bg-gradient-to-br lg:from-[var(--lf-purple-faint)] lg:to-white lg:p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--lf-purple)]">Studio admin</p>
             <p className="font-serif text-lg font-semibold text-[var(--lf-ink)]">{site.name}</p>
           </div>
           <button
@@ -134,31 +147,39 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
             <IconMenu open={navOpen} />
           </button>
         </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto p-2 lg:p-3">
-          {ADMIN_SECTIONS.map((item) => {
-            const active =
-              pathname === item.href ||
-              (item.href === "/admin/catalog" &&
-                (pathname === "/admin/catalog" || pathname.startsWith("/admin/catalog/edit/"))) ||
-              (item.href !== "/admin" &&
-                item.href !== "/admin/catalog" &&
-                pathname.startsWith(`${item.href}/`));
+        <nav className="flex-1 overflow-y-auto p-3">
+          {ADMIN_NAV_GROUPS.map((group) => {
+            const items = ADMIN_SECTIONS.filter((s) => s.group === group.id);
+            if (items.length === 0) return null;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`block rounded-lg px-3 py-2.5 text-sm transition ${
-                  active
-                    ? "bg-[var(--lf-purple-faint)] font-semibold text-[var(--lf-purple-deep)]"
-                    : "text-[var(--lf-ink)] hover:bg-zinc-50"
-                }`}
-              >
-                {item.label}
-              </Link>
+              <div key={group.id} className="mb-4 last:mb-0">
+                <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
+                  {group.label}
+                </p>
+                <ul className="space-y-0.5">
+                  {items.map((item) => {
+                    const active = isNavActive(pathname, item.href);
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          className={`block rounded-xl px-3 py-2.5 text-sm transition ${
+                            active
+                              ? "bg-[var(--lf-purple-deep)] font-semibold text-white shadow-sm"
+                              : "text-[var(--lf-ink)] hover:bg-violet-50 hover:text-[var(--lf-purple-deep)]"
+                          }`}
+                        >
+                          {item.shortLabel ?? item.label}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             );
           })}
         </nav>
-        <div className="mt-auto hidden border-t border-zinc-100 p-4 lg:block">
+        <div className="mt-auto hidden border-t border-violet-100 bg-zinc-50/80 p-4 lg:block">
           <p className="truncate text-xs text-[var(--lf-muted)]" title={user.email ?? undefined}>
             {user.email}
           </p>
@@ -197,7 +218,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
       ) : null}
 
       <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-[40] flex h-14 items-center justify-between gap-3 border-b border-zinc-200 bg-white/95 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-[40] flex h-14 items-center justify-between gap-3 border-b border-violet-200/50 bg-white/90 px-4 backdrop-blur-md sm:px-6">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -207,21 +228,17 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
             >
               <IconMenu open={false} />
             </button>
-            <h1 className="truncate font-serif text-lg font-semibold text-[var(--lf-ink)] sm:text-xl">
-              {pathname.startsWith("/admin/catalog/edit/")
-                ? "Edit product"
-                : ADMIN_SECTIONS.find((s) => {
-                    if (pathname === s.href) return true;
-                    if (s.href === "/admin" || s.href === "/admin/catalog") return false;
-                    return pathname.startsWith(`${s.href}/`);
-                  })?.label ?? "Admin"}
-            </h1>
+            <h1 className="truncate font-serif text-lg font-semibold text-[var(--lf-ink)] sm:text-xl">{pageTitle}</h1>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="hidden text-xs text-[var(--lf-muted)] sm:inline">Administrator</span>
+          <div
+            className="flex shrink-0 items-center gap-2"
+          >
+            <span className="hidden rounded-full bg-violet-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--lf-purple-deep)] sm:inline">
+              Admin
+            </span>
             <Link
               href="/"
-              className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-[var(--lf-ink)] hover:border-[var(--lf-purple)]"
+              className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-[var(--lf-ink)] shadow-sm transition hover:border-[var(--lf-purple)] hover:text-[var(--lf-purple-deep)]"
             >
               Storefront
             </Link>

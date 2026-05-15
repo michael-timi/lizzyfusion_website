@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AdminCatalogStatusBanner } from "@/components/admin/admin-catalog-status-banner";
-import { effectiveCompareAtPrice } from "@/lib/catalog-pricing";
+import { AdminCatalogTable, type AdminCatalogRow } from "@/components/admin/admin-catalog-table";
+import { effectiveCompareAtPrice, catalogDisplayPrice } from "@/lib/catalog-pricing";
+import { productHasStyleVariants } from "@/lib/catalog-style-variants";
 import {
   getCatalogConnectionStatus,
   getMergedCatalog,
@@ -16,6 +18,28 @@ export async function AdminCatalogView() {
   ]);
   const codeSlugs = new Set<string>(sampleProducts.map((p) => p.slug));
   const remoteSlugs = new Set(remoteRows.map((p) => p.slug));
+
+  const rows: AdminCatalogRow[] = merged.map((p) => {
+    const inCode = codeSlugs.has(p.slug);
+    const sample = sampleProducts.find((s) => s.slug === p.slug);
+    const origin: AdminCatalogRow["origin"] = !inCode
+      ? "Firestore only"
+      : sample && JSON.stringify(sample) === JSON.stringify(p)
+        ? "Code"
+        : "Firestore override";
+    const displayPrice = catalogDisplayPrice(p);
+    const was = effectiveCompareAtPrice(p);
+    return {
+      slug: p.slug,
+      name: p.name,
+      tag: p.tag,
+      priceLabel: productHasStyleVariants(p) ? `From ${formatNgn(displayPrice)}` : formatNgn(displayPrice),
+      priceWasLabel: was !== undefined ? formatNgn(was) : undefined,
+      origin,
+      hasRemote: remoteSlugs.has(p.slug),
+      hasStyleVariants: productHasStyleVariants(p),
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -34,73 +58,14 @@ export async function AdminCatalogView() {
           </p>
         </div>
         <Link
-          href="/admin/catalog/new"
+          href="/admin/catalog/add"
           className="shrink-0 rounded-full bg-[var(--lf-purple-deep)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple)]"
         >
           Add product
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
-        <table className="min-w-[800px] w-full text-left text-sm">
-          <thead className="border-b border-zinc-100 bg-zinc-50 text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
-            <tr>
-              <th className="px-4 py-3">Slug</th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Collection</th>
-              <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3">Origin</th>
-              <th className="px-4 py-3">Firestore</th>
-              <th className="px-4 py-3">Storefront</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {merged.map((p) => {
-              const inCode = codeSlugs.has(p.slug);
-              const sample = sampleProducts.find((s) => s.slug === p.slug);
-              const origin =
-                !inCode ? "Firestore only" : sample && JSON.stringify(sample) === JSON.stringify(p) ? "Code" : "Firestore override";
-              const hasRemote = remoteSlugs.has(p.slug);
-              const was = effectiveCompareAtPrice(p);
-              return (
-                <tr key={p.slug} className="hover:bg-zinc-50/80">
-                  <td className="px-4 py-3 font-mono text-xs text-zinc-600">{p.slug}</td>
-                  <td className="px-4 py-3 font-medium text-[var(--lf-ink)]">{p.name}</td>
-                  <td className="px-4 py-3 text-[var(--lf-muted)]">{p.tag}</td>
-                  <td className="px-4 py-3 font-semibold tabular-nums">
-                    {was !== undefined ? (
-                      <span className="inline-flex flex-col items-end gap-0.5">
-                        <span className="text-xs font-medium text-zinc-500 line-through">{formatNgn(was)}</span>
-                        <span className="text-[var(--lf-ink)]">{formatNgn(p.price)}</span>
-                      </span>
-                    ) : (
-                      formatNgn(p.price)
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-[var(--lf-muted)]">{origin}</td>
-                  <td className="px-4 py-3">
-                    {hasRemote ? (
-                      <Link
-                        href={`/admin/catalog/edit/${encodeURIComponent(p.slug)}`}
-                        className="font-semibold text-[var(--lf-purple)] hover:underline"
-                      >
-                        Edit
-                      </Link>
-                    ) : (
-                      <span className="text-xs text-zinc-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/shop/${p.slug}`} className="font-semibold text-[var(--lf-purple)] hover:underline">
-                      View PDP
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <AdminCatalogTable rows={rows} />
 
       <p className="text-xs text-[var(--lf-muted)]">
         Firestore reads use the Firebase Admin SDK on the server — set{" "}

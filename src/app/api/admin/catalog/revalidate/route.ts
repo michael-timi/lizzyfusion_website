@@ -8,10 +8,10 @@ export const dynamic = "force-dynamic";
 
 /**
  * Admin-only on-demand revalidation for the storefront catalogue. The admin add / edit / delete
- * client UIs POST here after a successful Firestore write, so newly published products appear on
- * /shop and /shop/[slug] without waiting for the `unstable_cache` TTL to expire.
+ * client UIs POST here after a successful Firestore write, so newly published products appear for
+ * everyone (including logged-out visitors) without waiting for the `unstable_cache` TTL.
  *
- * Optional `slug` in the JSON body narrows path revalidation to a specific PDP.
+ * Optional `slug` in the JSON body also revalidates that product’s PDP (`/shop/[slug]`).
  */
 export async function POST(req: Request) {
   const auth = req.headers.get("authorization");
@@ -47,7 +47,21 @@ export async function POST(req: Request) {
   // the admin's first /shop/[slug] view after save to be fresh; stale-while-revalidate would
   // briefly serve the pre-save (=404) version of the page.
   revalidateTag(CATALOG_CACHE_TAG, { expire: 0 });
-  revalidatePath("/shop");
+
+  // `revalidateTag` clears `unstable_cache` for `getMergedCatalog()`. Prerendered / ISR HTML
+  // for each path must also be invalidated so anonymous visitors (home, lookbook, wishlist, etc.)
+  // see new or edited products without waiting for `revalidate: 300` or CDN SWR.
+  const catalogPaths = [
+    "/",
+    "/shop",
+    "/wishlist",
+    "/lookbook",
+    "/sitemap.xml",
+    "/api/catalog",
+  ] as const;
+  for (const p of catalogPaths) {
+    revalidatePath(p);
+  }
   if (slug) revalidatePath(`/shop/${slug}`);
 
   return NextResponse.json({ revalidated: true, slug: slug ?? null });

@@ -73,7 +73,7 @@ export async function POST(req: Request) {
   } catch (e) {
     const { userMessage, httpStatus, retryAfterSec } = parseGeminiFailure(e);
     const headers =
-      httpStatus === 429 && retryAfterSec !== undefined
+      retryAfterSec !== undefined && (httpStatus === 429 || httpStatus === 503)
         ? { "Retry-After": String(retryAfterSec) }
         : undefined;
     return NextResponse.json({ error: userMessage, retryAfterSec }, { status: httpStatus, headers });

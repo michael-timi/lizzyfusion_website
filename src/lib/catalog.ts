@@ -4,7 +4,15 @@ import {
   getAdminFirestore,
   type AdminCredStatus,
 } from "@/lib/firebase-admin-server";
+import {
+  isCatalogStyleVariant,
+  normalizeStyleVariants,
+  type CatalogStyleVariant,
+  type GalleryStyleLink,
+} from "@/lib/catalog-style-variants";
 import { sampleProducts } from "@/lib/site";
+
+export type { CatalogStyleVariant, GalleryStyleLink } from "@/lib/catalog-style-variants";
 
 /** Cache tag for the storefront catalogue. Invalidate after admin write via `revalidateTag(CATALOG_CACHE_TAG, 'max')`. */
 export const CATALOG_CACHE_TAG = "catalog";
@@ -45,6 +53,17 @@ export type CatalogProduct = {
   craftFabricLabels?: string[];
   /** Shown under “Colours” when set (fabrics / colourways available on request). */
   colourAvailabilityNotes?: string;
+  /**
+   * Optional dress styles (e.g. full long gown, short gown, children) each with its own price.
+   * When set, `price` should be the lowest variant price (shop “from” price). PDP lets shoppers
+   * pick a style; gallery thumbnails linked to a variant image update the displayed price.
+   */
+  styleVariants?: CatalogStyleVariant[];
+  /**
+   * Tags gallery/hero images with one or more style ids when a single photo shows multiple lengths
+   * (e.g. long + short gown) or adult + children together.
+   */
+  galleryStyleLinks?: GalleryStyleLink[];
 };
 
 function isHttpsUrlString(s: unknown): s is string {
@@ -113,6 +132,24 @@ function isCatalogProduct(data: unknown): data is CatalogProduct {
     if (typeof o.compareAtPrice !== "number" || !Number.isFinite(o.compareAtPrice)) return false;
     const cap = Math.round(o.compareAtPrice);
     if (cap <= o.price || cap > MAX_PRICE_NGN || cap < 0) return false;
+  }
+  if (o.styleVariants !== undefined) {
+    const normalized = normalizeStyleVariants(o.styleVariants);
+    if (!normalized || normalized.length === 0) return false;
+    if (!normalized.every(isCatalogStyleVariant)) return false;
+    const minP = Math.min(...normalized.map((v) => v.price));
+    if (Math.round(o.price as number) !== minP) return false;
+    if (o.galleryStyleLinks !== undefined) {
+      const validIds = new Set(normalized.map((v) => v.id));
+      if (!Array.isArray(o.galleryStyleLinks)) return false;
+      for (const link of o.galleryStyleLinks) {
+        if (!link || typeof link !== "object") return false;
+        const l = link as GalleryStyleLink;
+        if (typeof l.image !== "string" || !l.image.startsWith("https://")) return false;
+        if (!Array.isArray(l.styleIds) || l.styleIds.length === 0 || l.styleIds.length > 6) return false;
+        if (!l.styleIds.every((id) => typeof id === "string" && validIds.has(id))) return false;
+      }
+    }
   }
   return true;
 }

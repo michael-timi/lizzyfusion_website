@@ -37,6 +37,36 @@ export function AdminSettingsView() {
       </section>
 
       <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-[var(--lf-ink)]">Custom domain (App Hosting)</h3>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--lf-muted)]">
+          After the domain shows <strong className="font-semibold text-[var(--lf-ink)]">Connected</strong> in Firebase, finish these or Google
+          sign-in can still fail on the live site.
+        </p>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-[var(--lf-muted)]">
+          <li>
+            Firebase console → <strong className="text-[var(--lf-ink)]">App Hosting</strong> → your backend →{" "}
+            <strong className="text-[var(--lf-ink)]">Environment</strong> → set{" "}
+            <code className="rounded bg-zinc-100 px-1 text-xs">NEXT_PUBLIC_SITE_URL</code> to{" "}
+            <code className="rounded bg-zinc-100 px-1 text-xs">https://your-domain.com</code> (HTTPS, no trailing slash). Trigger a new rollout
+            so the client bundle picks it up.
+          </li>
+          <li>
+            <strong className="text-[var(--lf-ink)]">Authentication</strong> → Settings → <strong className="text-[var(--lf-ink)]">Authorized domains</strong>:
+            add both apex and <code className="rounded bg-zinc-100 px-1 text-xs">www</code> if you use both.
+          </li>
+          <li>
+            <strong className="text-[var(--lf-ink)]">Google Cloud Console</strong> (same project) → APIs &amp; Services → Credentials → your{" "}
+            <strong className="text-[var(--lf-ink)]">OAuth 2.0 Web client</strong> → <strong className="text-[var(--lf-ink)]">Authorized JavaScript origins</strong>:
+            add <code className="rounded bg-zinc-100 px-1 text-xs">https://your-domain.com</code> (and <code className="rounded bg-zinc-100 px-1 text-xs">www</code> if applicable).
+          </li>
+          <li>
+            If the Firebase <strong className="text-[var(--lf-ink)]">Browser API key</strong> uses HTTP referrer restrictions, add your production origin
+            (and optionally the <code className="rounded bg-zinc-100 px-1 text-xs">*.hosted.app</code> preview URL) to the allowed referrers list.
+          </li>
+        </ol>
+      </section>
+
+      <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-[var(--lf-ink)]">Catalogue hero (Gemini / Nano Banana 2)</h3>
         <p className="mt-2 text-sm leading-relaxed text-[var(--lf-muted)]">
           “Add product” uses <code className="rounded bg-zinc-100 px-1 text-xs">/api/admin/catalog/suggest-from-hero</code> (Gemini vision,{" "}
@@ -76,7 +106,8 @@ export function AdminSettingsView() {
           <li>Sign in with Firebase Auth (Google or email).</li>
           <li>
             In Firebase console → Firestore → <code className="rounded bg-zinc-100 px-1">users/{`{uid}`}</code> set{" "}
-            <code className="rounded bg-zinc-100 px-1">userType</code> to <code className="rounded bg-zinc-100 px-1">admin</code>.
+            <code className="rounded bg-zinc-100 px-1">userType</code> to the string <code className="rounded bg-zinc-100 px-1">admin</code>{" "}
+            (all lowercase — Firestore rules compare exactly).
           </li>
           <li>Deploy updated <code className="rounded bg-zinc-100 px-1">firestore.rules</code> so admins can list orders.</li>
         </ol>

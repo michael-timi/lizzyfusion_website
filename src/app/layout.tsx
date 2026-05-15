@@ -22,6 +22,12 @@ const serif = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   metadataBase: new URL(publicSiteUrl()),
+  /** Explicit `/public/icon.png` — not `app/icon.*` — so the tab icon is always Lizzy Fusion's mark. */
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png", sizes: "285x281" }],
+    apple: [{ url: "/icon.png", type: "image/png", sizes: "285x281" }],
+    shortcut: "/icon.png",
+  },
   title: {
     default: `${site.name} — ${site.slogan}`,
     template: `%s — ${site.name}`,
