@@ -6,8 +6,7 @@ import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import type { CatalogProduct } from "@/lib/catalog";
-import { catalogWhatsappPriceLine } from "@/lib/catalog-pricing";
-import { site, whatsappHref } from "@/lib/site";
+import { productWhatsappEnquiryHref } from "@/lib/product-share";
 import { getWishlistSlugs, subscribeWishlistStore } from "@/lib/wishlist";
 
 /**
@@ -57,13 +56,7 @@ export function WishlistView({ catalog }: { catalog: readonly CatalogProduct[] }
       ) : (
         <ul className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((p) => {
-            const msg = whatsappHref(
-              [
-                `*${site.name} — wishlist enquiry*`,
-                `Product: ${p.name}`,
-                catalogWhatsappPriceLine(p),
-              ].join("\n"),
-            );
+            const msg = productWhatsappEnquiryHref(p, { intent: "wishlist" });
             return (
               <li key={p.slug} className="group/card border border-[var(--lf-line)] bg-white shadow-sm">
                 <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100">

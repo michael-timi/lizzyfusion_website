@@ -11,8 +11,9 @@ import {
   trackSortApply,
   trackViewItemList,
 } from "@/lib/analytics-events";
-import { catalogDisplayPrice, catalogWhatsappPriceLine, type CatalogPricePick } from "@/lib/catalog-pricing";
-import { site, whatsappHref } from "@/lib/site";
+import { catalogDisplayPrice, type CatalogPricePick } from "@/lib/catalog-pricing";
+import { productWhatsappEnquiryHref } from "@/lib/product-share";
+import { site } from "@/lib/site";
 import { ProductFilters, type SortKey } from "./product-filters";
 import { ProductShareButton } from "./product-share-button";
 import { WishlistHeart } from "./wishlist-heart";
@@ -49,15 +50,7 @@ function ShopProductGrid({ products }: { products: Product[] }) {
       <ul className="grid gap-8 sm:grid-cols-2">
         {visibleProducts.map((p) => {
           const indexInFiltered = products.findIndex((x) => x.slug === p.slug);
-          const msg = whatsappHref(
-            [
-              `*${site.name} — product enquiry*`,
-              `Product: ${p.name}`,
-              catalogWhatsappPriceLine(p),
-              `My name / size / colour preference:`,
-              `(please fill before sending)`,
-            ].join("\n"),
-          );
+          const msg = productWhatsappEnquiryHref(p);
           const badge = badgeForIndex(indexInFiltered);
           return (
             <li key={p.slug} className="group/card border border-[var(--lf-line)] bg-white shadow-sm">

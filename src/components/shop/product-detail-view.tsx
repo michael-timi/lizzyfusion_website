@@ -5,14 +5,14 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { trackViewItem } from "@/lib/analytics-events";
 import { addCartLine } from "@/lib/cart";
 import type { CatalogProduct } from "@/lib/catalog";
-import { catalogWhatsappPriceLine } from "@/lib/catalog-pricing";
 import {
   getStyleVariantById,
   priceViewForSelection,
   productHasStyleVariants,
 } from "@/lib/catalog-style-variants";
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
-import { formatNgn, site, whatsappHref } from "@/lib/site";
+import { productWhatsappEnquiryHref } from "@/lib/product-share";
+import { formatNgn, site } from "@/lib/site";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import { ProductShareButton } from "./product-share-button";
 import { WishlistHeart } from "./wishlist-heart";
@@ -132,18 +132,15 @@ export function ProductDetailView({ product, gallery, variantIdsByIndex = [], re
     }
   };
 
-  const waHref = useMemo(() => {
-    const lines = [
-      `*${site.name} — product enquiry*`,
-      `Product: ${product.name}`,
-      catalogWhatsappPriceLine(priceView, selectedStyleLabel),
-      `Colour preference: swatch ${selectedSwatch + 1} (see PDP)`,
-      `Preferred size: ${size}`,
-      `My name and any tweaks (lining, length, sleeves):`,
-      `(please fill before sending)`,
-    ];
-    return whatsappHref(lines.join("\n"));
-  }, [priceView, product.name, selectedStyleLabel, selectedSwatch, size]);
+  const waHref = useMemo(
+    () =>
+      productWhatsappEnquiryHref(product, {
+        styleLabel: selectedStyleLabel,
+        size,
+        swatchIndex: selectedSwatch,
+      }),
+    [product, selectedStyleLabel, selectedSwatch, size],
+  );
 
   const toggleAcc = (id: string) => {
     setAccOpen((s) => ({ ...s, [id]: !s[id] }));
