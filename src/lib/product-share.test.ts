@@ -63,11 +63,10 @@ describe("productOgImageUrl", () => {
     else process.env.NEXT_PUBLIC_SITE_URL = prev;
   });
 
-  it("routes remote images through Next image optimizer", () => {
-    const src = "https://cdn.example/hero.jpg";
-    expect(productOgImageUrl(src)).toBe(
-      `https://lizzyfusion.example/_next/image?url=${encodeURIComponent(src)}&w=1200&q=75`,
-    );
+  it("returns a decoded absolute HTTPS image URL for crawlers", () => {
+    const encoded =
+      "https://cdn.example/path%2Fhero.jpg";
+    expect(productOgImageUrl(encoded)).toBe("https://cdn.example/path/hero.jpg");
   });
 });
 

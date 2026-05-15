@@ -22,7 +22,15 @@ export function buildProductPageMetadata(product: CatalogProduct, slug: string):
       description: desc,
       url,
       locale: "en_NG",
-      images: [{ url: image, alt: product.name }],
+      images: [
+        {
+          url: image,
+          alt: product.name,
+          width: 1200,
+          height: 1200,
+          type: "image/png",
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
