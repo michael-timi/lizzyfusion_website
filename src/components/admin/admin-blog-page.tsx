@@ -113,7 +113,7 @@ export function AdminBlogPage() {
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter(({ id, data }) => {
+    return rows.filter(({ data }) => {
       if (publishFilter === "published" && !data.published) return false;
       if (publishFilter === "draft" && data.published) return false;
       if (!q) return true;

@@ -219,8 +219,8 @@ function parseStylesVisibleInHero(v: unknown, validIds: Set<string>): string[] |
 }
 
 function enrichStyleSuggestions(base: CatalogSuggestFromHero): CatalogSuggestFromHero {
-  let { suggestedStyleVariants, stylesVisibleInHero, multiStyleRecommended, garmentAudience, priceNgn } =
-    base;
+  let { suggestedStyleVariants, stylesVisibleInHero, multiStyleRecommended } = base;
+  const { garmentAudience, priceNgn } = base;
 
   if (!suggestedStyleVariants?.length && garmentAudience === "child") {
     suggestedStyleVariants = [{ id: "children", label: "Children", priceNgn }];
