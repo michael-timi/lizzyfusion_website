@@ -28,7 +28,7 @@ export function buildProductPageMetadata(product: CatalogProduct, slug: string):
           alt: product.name,
           width: 1200,
           height: 1200,
-          type: "image/png",
+          type: "image/jpeg",
         },
       ],
     },

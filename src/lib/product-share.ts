@@ -22,17 +22,34 @@ export function productShareImageUrl(image: string): string {
 }
 
 /**
- * OG / Twitter preview image — use the public Firebase (or CDN) URL directly.
- * Avoids `/_next/image` (attachment disposition breaks WhatsApp) and does not require
- * a separate API route at runtime. Storage rules allow public read on catalogue images.
+ * OG / Twitter preview image — resized JPEG via `/api/og/image` so crawlers get a
+ * small file without `/_next/image` attachment headers or multi‑MB Storage PNGs.
  */
 export function productOgImageUrl(image: string): string {
   const raw = productShareImageUrl(image);
+  let source = raw;
   try {
-    return decodeURIComponent(raw);
+    source = decodeURIComponent(raw);
   } catch {
-    return raw;
+    /* keep raw */
   }
+
+  if (!source.startsWith("https://")) {
+    return source;
+  }
+
+  const site = publicSiteUrl();
+  try {
+    if (new URL(source).hostname === new URL(site).hostname) {
+      return source;
+    }
+  } catch {
+    return source;
+  }
+
+  const proxy = new URL("/api/og/image", site);
+  proxy.searchParams.set("url", source);
+  return proxy.href;
 }
 
 /** Product copy without URL (pair with `productShareUrl` in Web Share API). */

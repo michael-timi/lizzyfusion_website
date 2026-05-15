@@ -1,71 +1,26 @@
-import { productShareImageUrl } from "@/lib/product-share";
-import { publicSiteUrl } from "@/lib/site";
+import { decodeImageSource, isAllowedOgImageSource } from "@/lib/og-image-source";
+import sharp from "sharp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ALLOWED_IMAGE_HOSTS = new Set([
-  "firebasestorage.googleapis.com",
-  "storage.googleapis.com",
-  "images.unsplash.com",
-]);
+const OG_MAX_WIDTH = 1200;
+const OG_JPEG_QUALITY = 82;
+const FETCH_TIMEOUT_MS = 20_000;
 
-function isAllowedImageSource(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:") return false;
-    if (ALLOWED_IMAGE_HOSTS.has(parsed.hostname)) return true;
-    return parsed.hostname === new URL(publicSiteUrl()).hostname;
-  } catch {
-    return false;
-  }
-}
-
-function decodeImageSource(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  try {
-    return decodeURIComponent(trimmed);
-  } catch {
-    return trimmed;
-  }
-}
-
-async function proxyOptimizedImage(source: string): Promise<Response | null> {
-  const optimizer = new URL("/_next/image", publicSiteUrl());
-  optimizer.searchParams.set("url", source);
-  optimizer.searchParams.set("w", "1200");
-  optimizer.searchParams.set("q", "75");
-
-  const upstream = await fetch(optimizer.href, { cache: "force-cache" });
+async function resizeForOgPreview(source: string): Promise<Buffer | null> {
+  const upstream = await fetch(source, {
+    cache: "force-cache",
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   if (!upstream.ok) return null;
 
-  const contentType = upstream.headers.get("content-type");
-  const body = await upstream.arrayBuffer();
-  return new Response(body, {
-    status: 200,
-    headers: {
-      "Content-Type": contentType?.startsWith("image/") ? contentType : "image/png",
-      "Cache-Control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
-    },
-  });
-}
-
-async function proxyDirectImage(source: string): Promise<Response | null> {
-  const upstream = await fetch(source, { cache: "force-cache" });
-  if (!upstream.ok) return null;
-
-  const contentType = upstream.headers.get("content-type");
-  if (!contentType?.startsWith("image/")) return null;
-
-  const body = await upstream.arrayBuffer();
-  return new Response(body, {
-    status: 200,
-    headers: {
-      "Content-Type": contentType,
-      "Cache-Control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
-    },
-  });
+  const input = Buffer.from(await upstream.arrayBuffer());
+  return sharp(input)
+    .rotate()
+    .resize({ width: OG_MAX_WIDTH, withoutEnlargement: true })
+    .jpeg({ quality: OG_JPEG_QUALITY, mozjpeg: true })
+    .toBuffer();
 }
 
 /**
@@ -79,15 +34,24 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const source = decodeImageSource(raw);
-  if (!source || !isAllowedImageSource(source)) {
+  if (!source || !isAllowedOgImageSource(source)) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  const optimized = await proxyOptimizedImage(source);
-  if (optimized) return optimized;
+  try {
+    const body = await resizeForOgPreview(source);
+    if (!body) {
+      return new Response("Not found", { status: 404 });
+    }
 
-  const direct = await proxyDirectImage(source);
-  if (direct) return direct;
-
-  return new Response("Not found", { status: 404 });
+    return new Response(new Uint8Array(body), {
+      status: 200,
+      headers: {
+        "Content-Type": "image/jpeg",
+        "Cache-Control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+      },
+    });
+  } catch {
+    return new Response("Not found", { status: 404 });
+  }
 }

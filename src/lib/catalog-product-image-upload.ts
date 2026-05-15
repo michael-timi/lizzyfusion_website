@@ -1,3 +1,4 @@
+import { compressCatalogImageFile } from "@/lib/compress-catalog-image";
 import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import type { FirebaseStorage } from "firebase/storage";
 
@@ -24,10 +25,11 @@ export async function uploadCatalogProductHeroImage(
   if (file.size > MAX_BYTES) {
     throw new Error("Image must be 5 MB or smaller.");
   }
-  const segment = `${Date.now()}_${safeFileSegment(file.name)}`;
+  const prepared = await compressCatalogImageFile(file);
+  const segment = `${Date.now()}_${safeFileSegment(prepared.name)}`;
   const storagePath = `users/${uid}/catalog_product_images/${slug}/${segment}`;
   const r = ref(storage, storagePath);
-  await uploadBytes(r, file, { contentType: file.type || "application/octet-stream" });
+  await uploadBytes(r, prepared, { contentType: prepared.type || "application/octet-stream" });
   const downloadUrl = await getDownloadURL(r);
   return { downloadUrl, storagePath };
 }
@@ -66,10 +68,11 @@ export async function uploadCatalogProductGalleryImage(
   if (file.size > MAX_BYTES) {
     throw new Error("Image must be 5 MB or smaller.");
   }
-  const segment = `gallery_${Date.now()}_${safeFileSegment(file.name)}`;
+  const prepared = await compressCatalogImageFile(file);
+  const segment = `gallery_${Date.now()}_${safeFileSegment(prepared.name)}`;
   const storagePath = `users/${uid}/catalog_product_images/${slug}/${segment}`;
   const r = ref(storage, storagePath);
-  await uploadBytes(r, file, { contentType: file.type || "application/octet-stream" });
+  await uploadBytes(r, prepared, { contentType: prepared.type || "application/octet-stream" });
   const downloadUrl = await getDownloadURL(r);
   return { downloadUrl, storagePath };
 }
