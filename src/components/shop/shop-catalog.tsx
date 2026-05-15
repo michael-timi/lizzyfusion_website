@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { catalogDisplayPrice, catalogWhatsappPriceLine, type CatalogPricePick } from "@/lib/catalog-pricing";
 import { site, whatsappHref } from "@/lib/site";
 import { ProductFilters, type SortKey } from "./product-filters";
+import { ProductShareButton } from "./product-share-button";
 import { WishlistHeart } from "./wishlist-heart";
 
 type Product = CatalogPricePick & {
@@ -72,7 +73,10 @@ function ShopProductGrid({ products }: { products: Product[] }) {
                     {badge}
                   </span>
                 ) : null}
-                <WishlistHeart slug={p.slug} className="absolute right-3 top-3 z-10" />
+                <div className="absolute right-3 top-3 z-10 flex flex-col gap-2">
+                  <WishlistHeart slug={p.slug} />
+                  <ProductShareButton product={p} />
+                </div>
               </div>
               <div className="p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
