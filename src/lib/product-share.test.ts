@@ -63,10 +63,17 @@ describe("productOgImageUrl", () => {
     else process.env.NEXT_PUBLIC_SITE_URL = prev;
   });
 
-  it("returns a decoded absolute HTTPS image URL for crawlers", () => {
-    const encoded =
-      "https://cdn.example/path%2Fhero.jpg";
-    expect(productOgImageUrl(encoded)).toBe("https://cdn.example/path/hero.jpg");
+  it("points remote images at the OG resize proxy", () => {
+    const source = "https://firebasestorage.googleapis.com/v0/b/bucket/o/path%2Fhero.png?alt=media";
+    expect(productOgImageUrl(source)).toBe(
+      "https://lizzyfusion.example/api/og/image?url=https%3A%2F%2Ffirebasestorage.googleapis.com%2Fv0%2Fb%2Fbucket%2Fo%2Fpath%2Fhero.png%3Falt%3Dmedia",
+    );
+  });
+
+  it("passes through same-origin absolute URLs", () => {
+    expect(productOgImageUrl("https://lizzyfusion.example/catalog/hero.jpg")).toBe(
+      "https://lizzyfusion.example/catalog/hero.jpg",
+    );
   });
 });
 
