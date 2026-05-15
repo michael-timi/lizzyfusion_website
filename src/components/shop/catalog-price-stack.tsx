@@ -1,6 +1,6 @@
 "use client";
 
-import { effectiveCompareAtPrice } from "@/lib/catalog-pricing";
+import { catalogDisplayPrice, catalogPriceShowsFrom, effectiveCompareAtPrice } from "@/lib/catalog-pricing";
 import type { CatalogPricePick } from "@/lib/catalog-pricing";
 import { formatNgn } from "@/lib/site";
 
@@ -12,7 +12,9 @@ type Props = {
 };
 
 export function CatalogPriceStack({ product, align = "end", className = "" }: Props) {
+  const display = catalogDisplayPrice(product);
   const was = effectiveCompareAtPrice(product);
+  const from = catalogPriceShowsFrom(product);
   const alignCls = align === "end" ? "items-end text-right" : "items-start text-left";
   return (
     <div className={`flex flex-col gap-0.5 tabular-nums ${alignCls} ${className}`}>
@@ -22,7 +24,14 @@ export function CatalogPriceStack({ product, align = "end", className = "" }: Pr
       <span
         className={`text-sm font-semibold text-[var(--lf-ink)] ${was !== undefined ? "text-[var(--lf-purple-deep)]" : ""}`}
       >
-        {formatNgn(product.price)}
+        {from ? (
+          <>
+            <span className="text-xs font-medium text-[var(--lf-muted)]">From </span>
+            {formatNgn(display)}
+          </>
+        ) : (
+          formatNgn(display)
+        )}
       </span>
     </div>
   );

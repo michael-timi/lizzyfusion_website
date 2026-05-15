@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { doc, setDoc } from "firebase/firestore";
+import { AdminFormBusyOverlay } from "@/components/admin/admin-form-busy-overlay";
 import { AdminFormErrorBanner } from "@/components/admin/admin-form-error-banner";
+import { adminFormFeedbackPadding } from "@/components/admin/admin-form-feedback";
+import { AdminFormSuccessBanner } from "@/components/admin/admin-form-success-banner";
 import { useFirebaseAuth } from "@/components/auth/firebase-auth-provider";
 import type { CatalogProduct } from "@/lib/catalog";
 import { getFirebaseDb } from "@/lib/firebase-db";
@@ -87,6 +90,7 @@ export function AdminFeaturedView({
   const [tileDraft, setTileDraft] = useState<TileDraft>(() => buildTileDraft(featured));
   const [lookDraft, setLookDraft] = useState<LookDraft>(() => buildLookDraft(featured));
   const [busy, setBusy] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
@@ -125,16 +129,20 @@ export function AdminFeaturedView({
       return;
     }
     setBusy(true);
+    setSaveMessage("Saving Featured pins…");
     try {
       const payload: SiteFeatured = draftFeatured;
       await setDoc(doc(db, "site_featured", "v1"), payload);
+      setSaveMessage("Updating homepage and lookbook…");
       await requestSiteFeaturedRevalidation(user);
+      setError(null);
       setSavedAt(Date.now());
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not save Featured pins.";
       setError(msg);
     } finally {
       setBusy(false);
+      setSaveMessage(null);
     }
   }
 
@@ -148,7 +156,7 @@ export function AdminFeaturedView({
   const canSave = Boolean(user && isAdmin && !profileLoading && db && isDirty);
 
   return (
-    <div className={`space-y-8 ${error ? "pb-28 sm:pb-8" : ""}`}>
+    <div className={`space-y-8 ${adminFormFeedbackPadding(Boolean(error || savedAt !== null))}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">Featured pins</h2>
@@ -165,15 +173,12 @@ export function AdminFeaturedView({
         </Link>
       </div>
 
-      {savedAt !== null ? (
-        <div
-          className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-900"
-          role="status"
-          aria-live="polite"
-        >
-          <p className="font-semibold">Saved — homepage, shop hero, and lookbook will reflect these pins immediately.</p>
-        </div>
-      ) : null}
+      <div className="relative space-y-8">
+        <AdminFormBusyOverlay
+          active={busy}
+          title="Saving Featured pins"
+          message={saveMessage ?? "Please keep this tab open…"}
+        />
 
       <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
         <header>
@@ -365,7 +370,7 @@ export function AdminFeaturedView({
         </ul>
       </section>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-2">
         <button
           type="button"
           disabled={busy || !canSave}
@@ -378,18 +383,35 @@ export function AdminFeaturedView({
           <button
             type="button"
             onClick={resetDraft}
-            className="text-sm font-semibold text-[var(--lf-purple)] hover:underline"
+            disabled={busy}
+            className="text-sm font-semibold text-[var(--lf-purple)] hover:underline disabled:opacity-50"
           >
             Discard changes
           </button>
         ) : (
           <span className="text-xs text-[var(--lf-muted)]">No unsaved changes.</span>
         )}
-        <p className="ml-auto text-xs text-[var(--lf-muted)]">
-          Saving writes <code className="rounded bg-zinc-100 px-1 text-[11px]">site_featured/v1</code> and
-          revalidates {site.name}.
-        </p>
+        {busy ? (
+          <p className="text-xs text-[var(--lf-muted)]" aria-live="polite">
+            {saveMessage ?? "Working…"}
+          </p>
+        ) : (
+          <p className="ml-auto text-xs text-[var(--lf-muted)]">
+            Saving writes <code className="rounded bg-zinc-100 px-1 text-[11px]">site_featured/v1</code> and
+            revalidates {site.name}.
+          </p>
+        )}
       </div>
+      </div>
+
+      {savedAt !== null ? (
+        <AdminFormSuccessBanner
+          title="Featured pins saved"
+          onDismiss={() => setSavedAt(null)}
+        >
+          Homepage tiles, shop hero, and lookbook will reflect these pins immediately.
+        </AdminFormSuccessBanner>
+      ) : null}
 
       <AdminFormErrorBanner message={error} onDismiss={() => setError(null)} />
     </div>

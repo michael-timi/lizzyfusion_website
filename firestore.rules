@@ -35,6 +35,72 @@ service cloud.firestore {
       return n is number && n == int(n) && int(n) >= 0 && int(n) <= 100000000;
     }
 
+    function catalogStyleVariantItem(v) {
+      return v is map
+        && v.keys().hasAll(['id', 'label', 'price'])
+        && v.keys().size() <= 5
+        && v.id is string
+        && v.id.size() > 0
+        && v.id.size() <= 40
+        && v.label is string
+        && v.label.size() > 0
+        && v.label.size() <= 120
+        && catalogWholeNaira(v.price)
+        && (!('compareAtPrice' in v)
+          || (catalogWholeNaira(v.compareAtPrice) && int(v.compareAtPrice) > int(v.price)))
+        && (!('image' in v)
+          || (v.image is string
+            && v.image.size() > 10
+            && v.image.size() <= 8192
+            && v.image.matches('^https://.+')));
+    }
+
+    function catalogStyleVariantsValid(list) {
+      return list is list
+        && list.size() >= 1
+        && list.size() <= 6
+        && catalogStyleVariantItem(list[0])
+        && (list.size() < 2 || catalogStyleVariantItem(list[1]))
+        && (list.size() < 3 || catalogStyleVariantItem(list[2]))
+        && (list.size() < 4 || catalogStyleVariantItem(list[3]))
+        && (list.size() < 5 || catalogStyleVariantItem(list[4]))
+        && (list.size() < 6 || catalogStyleVariantItem(list[5]));
+    }
+
+    function catalogStyleIdString(s) {
+      return s is string && s.size() > 0 && s.size() <= 40;
+    }
+
+    function catalogGalleryStyleLinkItem(link) {
+      return link.keys().hasAll(['image', 'styleIds'])
+        && link.keys().size() == 2
+        && link.image is string
+        && link.image.size() > 10
+        && link.image.size() <= 8192
+        && link.image.matches('^https://.+')
+        && link.styleIds is list
+        && link.styleIds.size() >= 1
+        && link.styleIds.size() <= 6
+        && catalogStyleIdString(link.styleIds[0])
+        && (link.styleIds.size() < 2 || catalogStyleIdString(link.styleIds[1]))
+        && (link.styleIds.size() < 3 || catalogStyleIdString(link.styleIds[2]))
+        && (link.styleIds.size() < 4 || catalogStyleIdString(link.styleIds[3]))
+        && (link.styleIds.size() < 5 || catalogStyleIdString(link.styleIds[4]))
+        && (link.styleIds.size() < 6 || catalogStyleIdString(link.styleIds[5]));
+    }
+
+    function catalogGalleryStyleLinksValid(list) {
+      return list is list
+        && list.size() >= 1
+        && list.size() <= 6
+        && catalogGalleryStyleLinkItem(list[0])
+        && (list.size() < 2 || catalogGalleryStyleLinkItem(list[1]))
+        && (list.size() < 3 || catalogGalleryStyleLinkItem(list[2]))
+        && (list.size() < 4 || catalogGalleryStyleLinkItem(list[3]))
+        && (list.size() < 5 || catalogGalleryStyleLinkItem(list[4]))
+        && (list.size() < 6 || catalogGalleryStyleLinkItem(list[5]));
+    }
+
     function catalogProductCore(catalogSlug) {
       let d = request.resource.data;
       return d.slug is string
@@ -76,7 +142,9 @@ service cloud.firestore {
         && (!('colourAvailabilityNotes' in d)
           || (d.colourAvailabilityNotes is string && d.colourAvailabilityNotes.size() <= 4000))
         && (!('craftFabricLabels' in d)
-          || (d.craftFabricLabels is list && d.craftFabricLabels.size() <= 8));
+          || (d.craftFabricLabels is list && d.craftFabricLabels.size() <= 8))
+        && (!('styleVariants' in d) || catalogStyleVariantsValid(d.styleVariants))
+        && (!('galleryStyleLinks' in d) || catalogGalleryStyleLinksValid(d.galleryStyleLinks));
     }
 
     match /catalog_products/{slug} {

@@ -1,4 +1,8 @@
 import { GoogleGenAI, createPartFromBase64, createPartFromText } from "@google/genai";
+import {
+  DEFAULT_STYLE_VARIANT_PRESETS,
+  slugifyStyleVariantId,
+} from "@/lib/catalog-style-variants";
 import type {
   CameraAngle,
   DressCategory,
@@ -11,6 +15,14 @@ import type {
 
 /** Text + vision model (not the image-generation model). */
 const MODEL = "gemini-2.5-flash";
+
+const STYLE_VARIANT_IDS = new Set(DEFAULT_STYLE_VARIANT_PRESETS.map((p) => p.id));
+
+export type SuggestStyleVariant = {
+  id: string;
+  label: string;
+  priceNgn: number;
+};
 
 export type CatalogSuggestFromHero = {
   slug: string;
@@ -34,6 +46,12 @@ export type CatalogSuggestFromHero = {
   cameraAngle: CameraAngle;
   galleryRestrictNoLookbook: boolean;
   heroNotes?: string;
+  /** True when the studio likely sells multiple lengths/audiences with different prices. */
+  multiStyleRecommended: boolean;
+  /** Suggested sellable styles (ids: full-long, short, children). */
+  suggestedStyleVariants?: SuggestStyleVariant[];
+  /** Style ids visibly shown on the hero mannequin (for gallery ↔ price linking). */
+  stylesVisibleInHero?: string[];
 };
 
 const TAG_HINTS = [
@@ -148,6 +166,91 @@ function parseStringArray(v: unknown, max: number, maxItem: number): string[] | 
   return out.length ? out : undefined;
 }
 
+function resolveStyleVariantId(rawId: unknown, rawLabel: unknown): string | null {
+  const fromId = slugifyStyleVariantId(typeof rawId === "string" ? rawId : "");
+  if (STYLE_VARIANT_IDS.has(fromId)) return fromId;
+
+  const label = typeof rawLabel === "string" ? rawLabel.toLowerCase() : "";
+  if (label.includes("child") || label.includes("kid") || label.includes("junior")) return "children";
+  if (label.includes("short") || label.includes("mini") || label.includes("knee")) return "short";
+  if (
+    label.includes("long") ||
+    label.includes("full") ||
+    label.includes("maxi") ||
+    label.includes("floor") ||
+    label.includes("ankle")
+  ) {
+    return "full-long";
+  }
+  return null;
+}
+
+function parseSuggestedStyleVariants(v: unknown, fallbackPrice: number): SuggestStyleVariant[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out: SuggestStyleVariant[] = [];
+  const seen = new Set<string>();
+  for (const row of v) {
+    if (!row || typeof row !== "object") continue;
+    const o = row as Record<string, unknown>;
+    const id = resolveStyleVariantId(o.id, o.label);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    const preset = DEFAULT_STYLE_VARIANT_PRESETS.find((p) => p.id === id);
+    out.push({
+      id,
+      label: asNonEmptyString(o.label, preset?.label ?? id, 120),
+      priceNgn: clampInt(o.priceNgn, 5000, 2_000_000, fallbackPrice),
+    });
+    if (out.length >= 6) break;
+  }
+  return out.length ? out : undefined;
+}
+
+function parseStylesVisibleInHero(v: unknown, validIds: Set<string>): string[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out: string[] = [];
+  for (const raw of v) {
+    const id = resolveStyleVariantId(raw, raw);
+    if (!id || !validIds.has(id) || out.includes(id)) continue;
+    out.push(id);
+    if (out.length >= 6) break;
+  }
+  return out.length ? out : undefined;
+}
+
+function enrichStyleSuggestions(base: CatalogSuggestFromHero): CatalogSuggestFromHero {
+  let { suggestedStyleVariants, stylesVisibleInHero, multiStyleRecommended, garmentAudience, priceNgn } =
+    base;
+
+  if (!suggestedStyleVariants?.length && garmentAudience === "child") {
+    suggestedStyleVariants = [{ id: "children", label: "Children", priceNgn }];
+    stylesVisibleInHero = ["children"];
+    multiStyleRecommended = false;
+    return { ...base, suggestedStyleVariants, stylesVisibleInHero, multiStyleRecommended };
+  }
+
+  if (suggestedStyleVariants && suggestedStyleVariants.length > 1) {
+    multiStyleRecommended = true;
+  }
+
+  const validIds = new Set(suggestedStyleVariants?.map((v) => v.id) ?? []);
+
+  if (stylesVisibleInHero?.length) {
+    stylesVisibleInHero = stylesVisibleInHero.filter((id) => validIds.has(id));
+    if (stylesVisibleInHero.length === 0) stylesVisibleInHero = undefined;
+  }
+
+  if (multiStyleRecommended && suggestedStyleVariants?.length && !stylesVisibleInHero?.length) {
+    stylesVisibleInHero = suggestedStyleVariants.map((v) => v.id);
+  }
+
+  if (suggestedStyleVariants?.length === 1 && !stylesVisibleInHero?.length) {
+    stylesVisibleInHero = [suggestedStyleVariants[0]!.id];
+  }
+
+  return { ...base, multiStyleRecommended, suggestedStyleVariants, stylesVisibleInHero };
+}
+
 function buildSuggestPrompt(): string {
   return `You are a senior catalogue copywriter for Lizzy Fusion, a modest women's fashion studio in Osogbo, Osun State, Nigeria.
 The attached image is the official **Lizzy Fusion mannequin / dress-form hero** for one garment (already on-brand photography).
@@ -179,8 +282,16 @@ Return **only** a single JSON object (no markdown, no backticks) with exactly th
   "lighting": "softbox" | "editorial" | "natural-daylight",
   "cameraAngle": "front" | "three-quarter",
   "galleryRestrictNoLookbook": boolean (true if this PDP should use only this hero + uploaded extras, no generic filler),
-  "heroNotes": string or null (short studio notes for possible future re-generation; max 300 chars)
+  "heroNotes": string or null (short studio notes for possible future re-generation; max 300 chars),
+  "multiStyleRecommended": boolean (true if this SKU likely sells multiple lengths/audiences at different prices — common for aso-ebi, mother-and-child sets, or long+short shown together),
+  "suggestedStyleVariants": array or null (0-6 items; each { "id": "full-long"|"short"|"children", "label": string, "priceNgn": number } — only include styles the studio would actually sell; price each style realistically; children's lower than adult),
+  "stylesVisibleInHero": string[] or null (subset of ids from suggestedStyleVariants that are **visibly shown** on the mannequin in this hero — e.g. both full-long and short if two lengths appear in one photo; only children if a child mannequin; one id if a single length is shown)
 }
+
+Style id guide:
+- "full-long": floor-length / ankle / maxi on display
+- "short": knee / midi / cocktail length on display
+- "children": child mannequin or clearly children's sizing
 
 Use null (not empty string) when optional text should fall back to site defaults. Be specific to what you see in the image.`;
 }
@@ -190,12 +301,15 @@ export function normalizeCatalogSuggestPayload(o: Record<string, unknown>): Cata
   const name = asNonEmptyString(o.name, "New catalogue piece", 200);
   const slugRaw = asNonEmptyString(o.slug, slugify(name), 100);
   const slug = slugify(slugRaw) || slugify(name) || "new-piece";
+  const priceNgn = clampInt(o.priceNgn, 5000, 2_000_000, 85000);
+  const suggestedStyleVariants = parseSuggestedStyleVariants(o.suggestedStyleVariants, priceNgn);
+  const validStyleIds = new Set(suggestedStyleVariants?.map((v) => v.id) ?? STYLE_VARIANT_IDS);
 
-  return {
+  const base: CatalogSuggestFromHero = {
     slug,
     name,
     tag: normalizeTag(asNonEmptyString(o.tag, "Made-to-order", 120)),
-    priceNgn: clampInt(o.priceNgn, 5000, 2_000_000, 85000),
+    priceNgn,
     lead: asNonEmptyString(
       o.lead,
       "Confirm fabric and timeline on WhatsApp; fittings in Osogbo by appointment.",
@@ -224,7 +338,12 @@ export function normalizeCatalogSuggestPayload(o: Record<string, unknown>): Cata
     cameraAngle: parseCamera(o.cameraAngle),
     galleryRestrictNoLookbook: Boolean(o.galleryRestrictNoLookbook),
     heroNotes: o.heroNotes === null ? undefined : asNonEmptyString(o.heroNotes, "", 300) || undefined,
+    multiStyleRecommended: Boolean(o.multiStyleRecommended),
+    suggestedStyleVariants,
+    stylesVisibleInHero: parseStylesVisibleInHero(o.stylesVisibleInHero, validStyleIds),
   };
+
+  return enrichStyleSuggestions(base);
 }
 
 /** Parses model output (including optional ```json fences) into a validated payload. */

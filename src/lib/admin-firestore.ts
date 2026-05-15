@@ -75,6 +75,13 @@ export async function fetchAdminUserCount(): Promise<number> {
   return snap.size;
 }
 
+export async function fetchAdminCatalogCount(): Promise<number> {
+  const db = getFirebaseDb();
+  if (!db) return 0;
+  const snap = await getDocs(query(collection(db, "catalog_products"), limit(500)));
+  return snap.size;
+}
+
 export async function updateOrderAdminFields(
   orderId: string,
   patch: { status: OrderStatus | string; adminNote?: string },

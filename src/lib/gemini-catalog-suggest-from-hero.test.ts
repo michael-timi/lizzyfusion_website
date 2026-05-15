@@ -19,6 +19,9 @@ describe("normalizeCatalogSuggestPayload", () => {
     expect(out.lighting).toBe("softbox");
     expect(out.cameraAngle).toBe("front");
     expect(out.galleryRestrictNoLookbook).toBe(false);
+    expect(out.multiStyleRecommended).toBe(false);
+    expect(out.suggestedStyleVariants).toBeUndefined();
+    expect(out.stylesVisibleInHero).toBeUndefined();
   });
 
   it("maps known tag hint case-insensitively", () => {
@@ -42,6 +45,43 @@ describe("normalizeCatalogSuggestPayload", () => {
     expect(out.dressCategory).toBe("auto");
     expect(out.mannequinStyle).toBe("cream-female");
     expect(out.cameraAngle).toBe("front");
+  });
+
+  it("parses multi-style suggestions and visible hero styles", () => {
+    const out = normalizeCatalogSuggestPayload({
+      name: "Aso-ebi set",
+      multiStyleRecommended: true,
+      suggestedStyleVariants: [
+        { id: "full-long", label: "Full long gown", priceNgn: 120000 },
+        { id: "short", label: "Short gown", priceNgn: 85000 },
+      ],
+      stylesVisibleInHero: ["full-long", "short"],
+    });
+    expect(out.multiStyleRecommended).toBe(true);
+    expect(out.suggestedStyleVariants).toHaveLength(2);
+    expect(out.suggestedStyleVariants?.[0]?.id).toBe("full-long");
+    expect(out.stylesVisibleInHero).toEqual(["full-long", "short"]);
+  });
+
+  it("infers children style when garment audience is child", () => {
+    const out = normalizeCatalogSuggestPayload({
+      name: "Kids lace dress",
+      garmentAudience: "child",
+      priceNgn: 45000,
+    });
+    expect(out.suggestedStyleVariants).toEqual([
+      { id: "children", label: "Children", priceNgn: 45000 },
+    ]);
+    expect(out.stylesVisibleInHero).toEqual(["children"]);
+    expect(out.multiStyleRecommended).toBe(false);
+  });
+
+  it("maps fuzzy style labels to preset ids", () => {
+    const out = normalizeCatalogSuggestPayload({
+      name: "Gown",
+      suggestedStyleVariants: [{ id: "x", label: "Kids party dress", priceNgn: 40000 }],
+    });
+    expect(out.suggestedStyleVariants?.[0]?.id).toBe("children");
   });
 
   it("treats null optional strings as absent", () => {

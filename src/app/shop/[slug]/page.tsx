@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ProductDetailView } from "@/components/shop/product-detail-view";
 import { getCatalogProductBySlug, getMergedCatalog } from "@/lib/catalog";
 import { catalogProductJsonLd } from "@/lib/product-json-ld";
+import { buildPdpGallery } from "@/lib/catalog-style-variants";
 import { galleryUrlsForProduct, site } from "@/lib/site";
 
 type PageProps = { params: Promise<{ slug: string }> };
@@ -48,7 +49,10 @@ export default async function ShopProductPage({ params }: PageProps) {
   const product = await getCatalogProductBySlug(slug);
   if (!product) notFound();
 
-  const gallery = [...galleryUrlsForProduct(product)];
+  const built = buildPdpGallery(product);
+  const gallery =
+    built.urls.length > 0 ? [...built.urls] : [...galleryUrlsForProduct(product)];
+  const variantIdsByIndex = built.variantIdsByIndex;
   const all = await getMergedCatalog();
   const related = all.filter((p) => p.slug !== product.slug).slice(0, 3);
 
@@ -61,7 +65,12 @@ export default async function ShopProductPage({ params }: PageProps) {
         // JSON-LD for Google rich results (Product + Offer).
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <ProductDetailView product={product} gallery={gallery} related={related} />
+      <ProductDetailView
+        product={product}
+        gallery={gallery}
+        variantIdsByIndex={variantIdsByIndex}
+        related={related}
+      />
     </main>
   );
 }
