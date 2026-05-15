@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  trackFilterApply,
+  trackLoadMore,
+  trackSearch,
+  trackSortApply,
+  trackViewItemList,
+} from "@/lib/analytics-events";
 import { catalogDisplayPrice, catalogWhatsappPriceLine, type CatalogPricePick } from "@/lib/catalog-pricing";
 import { site, whatsappHref } from "@/lib/site";
 import { ProductFilters, type SortKey } from "./product-filters";
@@ -124,7 +131,11 @@ function ShopProductGrid({ products }: { products: Product[] }) {
         <div className="mt-12 flex justify-center">
           <button
             type="button"
-            onClick={() => setVisibleCount((n) => Math.min(n + LOAD_MORE_STEP, products.length))}
+            onClick={() => {
+              const next = Math.min(visibleCount + LOAD_MORE_STEP, products.length);
+              setVisibleCount(next);
+              void trackLoadMore("shop_grid", next);
+            }}
             className="min-w-[12rem] border border-[var(--lf-line)] bg-white px-10 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--lf-ink)] transition hover:border-[var(--lf-ink)]"
           >
             Load more
@@ -162,17 +173,45 @@ export function ShopCatalog({ query, products }: ShopCatalogProps) {
 
   const filteredKey = useMemo(() => filtered.map((p) => p.slug).join(","), [filtered]);
 
+  const lastSearch = useRef<string | null>(null);
+  useEffect(() => {
+    const q = query.trim();
+    if (!q || lastSearch.current === q) return;
+    lastSearch.current = q;
+    void trackSearch(q, products.length);
+  }, [query, products.length]);
+
+  const lastListKey = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${query}|${filteredKey}|${sort}`;
+    if (lastListKey.current === key) return;
+    lastListKey.current = key;
+    void trackViewItemList(query.trim() ? `shop_search` : "shop_all", filtered.map((p) => ({
+      item_id: p.slug,
+      item_name: p.name,
+      price: catalogDisplayPrice(p),
+      item_category: p.tag,
+    })), query.trim() ? { search_term: query.trim() } : undefined);
+  }, [query, filteredKey, sort, filtered]);
+
   function toggleCollection(label: string) {
     setSelectedCollections((prev) => {
       const next = new Set(prev);
       if (next.has(label)) next.delete(label);
       else next.add(label);
+      void trackFilterApply("shop", label);
       return next;
     });
   }
 
   function clearAll() {
     setSelectedCollections(new Set());
+    void trackFilterApply("shop", "clear_all");
+  }
+
+  function handleSortChange(next: SortKey) {
+    setSort(next);
+    void trackSortApply("shop", next);
   }
 
   return (
@@ -196,7 +235,7 @@ export function ShopCatalog({ query, products }: ShopCatalogProps) {
       <div className="flex flex-col gap-10 lg:flex-row lg:gap-12">
         <ProductFilters
           sort={sort}
-          onSortChange={setSort}
+          onSortChange={handleSortChange}
           selectedCollections={selectedCollections}
           onToggleCollection={toggleCollection}
           onClearAll={clearAll}

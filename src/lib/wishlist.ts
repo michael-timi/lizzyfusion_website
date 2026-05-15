@@ -1,3 +1,5 @@
+import { trackWishlistChange } from "@/lib/analytics-events";
+
 const WISHLIST_KEY = "lizzy-fusion-wishlist-v1";
 
 export function getWishlistSlugs(): string[] {
@@ -40,8 +42,10 @@ export function toggleWishlist(slug: string): boolean {
   const has = cur.includes(slug);
   if (has) {
     setWishlistSlugs(cur.filter((s) => s !== slug));
+    void trackWishlistChange(slug, false);
     return false;
   }
   setWishlistSlugs([...cur, slug]);
+  void trackWishlistChange(slug, true);
   return true;
 }

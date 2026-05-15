@@ -1,3 +1,5 @@
+import { trackAddToCart, trackRemoveFromCart } from "@/lib/analytics-events";
+
 const CART_KEY = "lizzy-fusion-cart-v1";
 
 export type CartLine = {
@@ -89,6 +91,14 @@ export function addCartLine(input: {
       ...(input.productImage !== undefined ? { productImage: input.productImage } : {}),
     };
     setCartLines(next);
+    const line = next[idx]!;
+    const display = line.productName ?? line.slug;
+    void trackAddToCart({
+      item_id: line.slug,
+      item_name: display,
+      price: line.unitPrice,
+      quantity: qty,
+    });
     return;
   }
   setCartLines([
@@ -104,11 +114,26 @@ export function addCartLine(input: {
       ...(input.productImage !== undefined ? { productImage: input.productImage } : {}),
     },
   ]);
+  void trackAddToCart({
+    item_id: input.slug,
+    item_name: input.productName ?? input.slug,
+    price: input.unitPrice,
+    quantity: qty,
+  });
 }
 
 export function updateCartQty(id: string, qty: number) {
   const lines = getCartLines();
   if (qty < 1) {
+    const removed = lines.find((l) => l.id === id);
+    if (removed) {
+      void trackRemoveFromCart({
+        item_id: removed.slug,
+        item_name: removed.productName ?? removed.slug,
+        price: removed.unitPrice,
+        quantity: removed.qty,
+      });
+    }
     setCartLines(lines.filter((l) => l.id !== id));
     return;
   }
@@ -116,7 +141,17 @@ export function updateCartQty(id: string, qty: number) {
 }
 
 export function removeCartLine(id: string) {
-  setCartLines(getCartLines().filter((l) => l.id !== id));
+  const lines = getCartLines();
+  const removed = lines.find((l) => l.id === id);
+  if (removed) {
+    void trackRemoveFromCart({
+      item_id: removed.slug,
+      item_name: removed.productName ?? removed.slug,
+      price: removed.unitPrice,
+      quantity: removed.qty,
+    });
+  }
+  setCartLines(lines.filter((l) => l.id !== id));
 }
 
 export function clearCart() {
