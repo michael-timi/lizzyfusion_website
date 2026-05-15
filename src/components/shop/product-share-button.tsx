@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState, type MouseEvent as Rea
 import type { ProductShareInput } from "@/lib/product-share";
 import { trackShare } from "@/lib/analytics-events";
 import {
-  productShareMessage,
+  productShareBlurb,
   productShareUrl,
   productWhatsappShareHref,
 } from "@/lib/product-share";
@@ -44,7 +44,7 @@ export function ProductShareButton({
   const [copied, setCopied] = useState(false);
 
   const url = productShareUrl(product.slug);
-  const message = productShareMessage(product, styleLabel);
+  const blurb = productShareBlurb(product, styleLabel);
   const waHref = productWhatsappShareHref(product, styleLabel);
 
   const canNativeShare =
@@ -83,7 +83,7 @@ export function ProductShareButton({
     try {
       await navigator.share({
         title: product.name,
-        text: message,
+        text: blurb,
         url,
       });
       void trackShare({ method: "native", contentType: "product", itemId: product.slug });
@@ -92,7 +92,7 @@ export function ProductShareButton({
       if (err instanceof DOMException && err.name === "AbortError") return;
       setOpen(true);
     }
-  }, [message, product.name, product.slug, url]);
+  }, [blurb, product.name, product.slug, url]);
 
   const onPrimaryClick = (e: ReactMouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
