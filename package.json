@@ -12,6 +12,7 @@
     "firebase:deploy:apphosting": "firebase deploy --only apphosting --force",
     "firebase:deploy:rules": "firebase deploy --only firestore:rules,storage",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "seed:blog": "node scripts/seed-blog.mjs",
     "catalog:seed": "node scripts/seed-catalog.mjs"
