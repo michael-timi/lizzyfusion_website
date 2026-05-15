@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import type { ProductShareInput } from "@/lib/product-share";
+import { trackShare } from "@/lib/analytics-events";
 import {
   productShareMessage,
   productShareUrl,
@@ -69,12 +70,13 @@ export function ProductShareButton({
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      void trackShare({ method: "copy_link", contentType: "product", itemId: product.slug });
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       window.prompt("Copy this link:", url);
     }
     setOpen(false);
-  }, [url]);
+  }, [url, product.slug]);
 
   const nativeShare = useCallback(async () => {
     if (!navigator.share) return;
@@ -84,12 +86,13 @@ export function ProductShareButton({
         text: message,
         url,
       });
+      void trackShare({ method: "native", contentType: "product", itemId: product.slug });
       setOpen(false);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       setOpen(true);
     }
-  }, [message, product.name, url]);
+  }, [message, product.name, product.slug, url]);
 
   const onPrimaryClick = (e: ReactMouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -158,7 +161,10 @@ export function ProductShareButton({
             rel="noreferrer"
             role="menuitem"
             className="flex w-full px-3 py-2 text-left text-sm text-[var(--lf-ink)] hover:bg-violet-50"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              void trackShare({ method: "whatsapp", contentType: "product", itemId: product.slug });
+            }}
           >
             Share on WhatsApp
           </a>

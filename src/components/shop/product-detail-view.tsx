@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { trackViewItem } from "@/lib/analytics-events";
 import { addCartLine } from "@/lib/cart";
 import type { CatalogProduct } from "@/lib/catalog";
 import { catalogWhatsappPriceLine } from "@/lib/catalog-pricing";
@@ -90,6 +91,18 @@ export function ProductDetailView({ product, gallery, variantIdsByIndex = [], re
   const selectedStyleLabel = selectedVariant?.label;
 
   const activeStyleIds = variantIdsByIndex[activeIndex] ?? [];
+
+  const lastViewedSlug = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastViewedSlug.current === product.slug) return;
+    lastViewedSlug.current = product.slug;
+    void trackViewItem({
+      item_id: product.slug,
+      item_name: product.name,
+      price: priceView.price,
+      item_category: product.tag,
+    });
+  }, [product.slug, product.name, product.tag, priceView.price]);
 
   const selectGalleryIndex = (index: number) => {
     setActiveIndex(index);

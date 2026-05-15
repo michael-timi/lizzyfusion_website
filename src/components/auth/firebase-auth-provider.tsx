@@ -5,6 +5,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { createContext, useContext, useEffect, useMemo, useState, startTransition } from "react";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { getFirebaseDb } from "@/lib/firebase-db";
+import { setAnalyticsUserId } from "@/lib/firebase-analytics";
 import { syncUserProfileFromAuth } from "@/lib/firebase-user-profile";
 
 type FirebaseAuthContextValue = {
@@ -51,6 +52,7 @@ export function FirebaseAuthProvider({ children }: { children: React.ReactNode }
     const unsub = onAuthStateChanged(auth, (next) => {
       setUser(next);
       setLoading(false);
+      void setAnalyticsUserId(next?.uid ?? null);
       if (next) {
         void syncUserProfileFromAuth(next).catch(() => {
           /* Firestore offline / rules — avoid surfacing in auth layer */
