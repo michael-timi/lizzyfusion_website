@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import type { CatalogProduct } from "@/lib/catalog";
-import { productShareImageUrl, productShareUrl } from "@/lib/product-share";
+import { productOgImageUrl, productShareUrl } from "@/lib/product-share";
 import { site } from "@/lib/site";
 
 export function buildProductPageMetadata(product: CatalogProduct, slug: string): Metadata {
   const desc =
     product.description.length > 155 ? `${product.description.slice(0, 155)}…` : product.description;
   const url = productShareUrl(slug);
-  const image = productShareImageUrl(product.image);
+  const image = productOgImageUrl(product.image);
   const title = `${product.name} · ${site.name}`;
 
   return {
@@ -22,15 +22,7 @@ export function buildProductPageMetadata(product: CatalogProduct, slug: string):
       description: desc,
       url,
       locale: "en_NG",
-      images: [
-        {
-          url: image,
-          secureUrl: image,
-          alt: product.name,
-          width: 1200,
-          height: 1200,
-        },
-      ],
+      images: [{ url: image, alt: product.name }],
     },
     twitter: {
       card: "summary_large_image",

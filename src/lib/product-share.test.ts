@@ -1,5 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import {
+  productOgImageUrl,
+  productShareBlurb,
   productShareImageUrl,
   productShareMessage,
   productShareUrl,
@@ -44,6 +46,44 @@ describe("productShareImageUrl", () => {
 
   it("resolves relative paths against site origin", () => {
     expect(productShareImageUrl("/catalog/hero.jpg")).toBe("https://lizzyfusion.example/catalog/hero.jpg");
+  });
+});
+
+describe("productOgImageUrl", () => {
+  const prev = process.env.NEXT_PUBLIC_SITE_URL;
+
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://lizzyfusion.example";
+  });
+
+  afterEach(() => {
+    if (prev === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
+    else process.env.NEXT_PUBLIC_SITE_URL = prev;
+  });
+
+  it("routes remote images through Next image optimizer", () => {
+    const src = "https://cdn.example/hero.jpg";
+    expect(productOgImageUrl(src)).toBe(
+      `https://lizzyfusion.example/_next/image?url=${encodeURIComponent(src)}&w=1200&q=75`,
+    );
+  });
+});
+
+describe("productShareBlurb", () => {
+  it("omits the product URL", () => {
+    const prev = process.env.NEXT_PUBLIC_SITE_URL;
+    process.env.NEXT_PUBLIC_SITE_URL = "https://lizzyfusion.example";
+    const blurb = productShareBlurb({
+      slug: "test-piece",
+      name: "Test Abaya",
+      tag: "Ready-to-wear",
+      price: 50000,
+      image: "https://cdn.example/a.jpg",
+    });
+    expect(blurb).toContain("Test Abaya");
+    expect(blurb).not.toContain("/shop/test-piece");
+    if (prev === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
+    else process.env.NEXT_PUBLIC_SITE_URL = prev;
   });
 });
 

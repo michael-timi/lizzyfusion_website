@@ -12,7 +12,7 @@ export function productShareUrl(slug: string): string {
   return new URL(`/shop/${slug}`, publicSiteUrl()).href;
 }
 
-/** Absolute image URL for link-preview crawlers (WhatsApp, iMessage, etc.). */
+/** Absolute source image URL (Firebase Storage, CDN, or site path). */
 export function productShareImageUrl(image: string): string {
   const trimmed = image.trim();
   if (trimmed.startsWith("https://") || trimmed.startsWith("http://")) {
@@ -21,21 +21,34 @@ export function productShareImageUrl(image: string): string {
   return new URL(trimmed.startsWith("/") ? trimmed : `/${trimmed}`, publicSiteUrl()).href;
 }
 
-/** Short plain-text blurb when the user shares or copies a product link. */
-export function productShareMessage(product: ProductShareInput, styleLabel?: string): string {
-  const url = productShareUrl(product.slug);
+/**
+ * OG / Twitter preview image — served via Next image optimization so crawlers get a
+ * smaller public file (Firebase originals are often multi‑MB with `cache-control: private`).
+ */
+export function productOgImageUrl(image: string): string {
+  const source = productShareImageUrl(image);
+  const site = publicSiteUrl();
+  if (source.startsWith("http://") || source.startsWith("https://")) {
+    const params = new URLSearchParams({ url: source, w: "1200", q: "75" });
+    return `${site}/_next/image?${params.toString()}`;
+  }
+  return source;
+}
+
+/** Product copy without URL (pair with `productShareUrl` in Web Share API). */
+export function productShareBlurb(product: ProductShareInput, styleLabel?: string): string {
   const priceLine = styleLabel
     ? catalogWhatsappPriceLine({ ...product, price: catalogDisplayPrice(product) }, styleLabel)
     : `From ${formatNgn(catalogDisplayPrice(product))}`;
-  return [
-    `${product.name} · ${site.name}`,
-    product.tag,
-    priceLine,
-    url,
-  ].join("\n");
+  return [`${product.name} · ${site.name}`, product.tag, priceLine].join("\n");
 }
 
-/** WhatsApp deep link with product copy and URL (chat apps unfurl the link for previews). */
+/** Plain-text blurb plus a single canonical URL (WhatsApp, SMS, etc.). */
+export function productShareMessage(product: ProductShareInput, styleLabel?: string): string {
+  return [productShareBlurb(product, styleLabel), productShareUrl(product.slug)].join("\n");
+}
+
+/** WhatsApp deep link with product copy and one URL for link unfurling. */
 export function productWhatsappShareHref(product: ProductShareInput, styleLabel?: string): string {
   return whatsappHref(productShareMessage(product, styleLabel));
 }
