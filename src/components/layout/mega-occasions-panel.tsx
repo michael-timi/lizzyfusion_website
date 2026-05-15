@@ -9,9 +9,8 @@ import type { CatalogProduct } from "@/lib/catalog";
 import { hrefForKeywords, pickProductByKeywords } from "@/lib/catalog-keywords";
 import { landingMedia, site } from "@/lib/site";
 
-/** Modimal-style olive for Occasions mega only (Image 1 reference). */
-const oliveBar =
-  "flex w-full items-center justify-between bg-[#74866a] px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-[#65755f]";
+const filterBar =
+  "flex w-full items-center justify-between bg-[var(--lf-purple-deep)] px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-[var(--lf-purple)]";
 
 /**
  * Keyword preferences for the four occasion "edit" cards. Resolved against the live catalogue at
@@ -43,7 +42,7 @@ function OccasionAccordion({
   const open = openId === id;
   return (
     <div>
-      <button type="button" onClick={() => setOpenId(open ? null : id)} className={oliveBar} aria-expanded={open}>
+      <button type="button" onClick={() => setOpenId(open ? null : id)} className={filterBar} aria-expanded={open}>
         {title}
         <span className="text-lg font-light leading-none">{open ? "−" : "+"}</span>
       </button>
@@ -149,7 +148,7 @@ export function MegaOccasionsPanel() {
             <OccasionAccordion id="sort" title="Sort by" openId={openId} setOpenId={setOpenId}>
               {(["Featured", "Price · low to high", "Price · high to low"] as const).map((label) => (
                 <label key={label} className="flex cursor-pointer items-center gap-2 py-1 text-sm">
-                  <input type="radio" name="occ-sort" defaultChecked={label === "Featured"} className="accent-[#74866a]" />
+                  <input type="radio" name="occ-sort" defaultChecked={label === "Featured"} className="accent-[var(--lf-purple-deep)]" />
                   {label}
                 </label>
               ))}
@@ -159,7 +158,7 @@ export function MegaOccasionsPanel() {
               <ul className="space-y-1 text-sm">
                 {["Wedding & reception", "Aso-ebi coordination", "Church & civil", "Office & boardroom"].map((label) => (
                   <li key={label}>
-                    <Link href="/custom" className="text-[var(--lf-ink)] underline-offset-2 hover:text-[#74866a] hover:underline">
+                    <Link href="/custom" className="text-[var(--lf-ink)] underline-offset-2 hover:text-[var(--lf-purple)] hover:underline">
                       {label}
                     </Link>
                   </li>
@@ -170,7 +169,7 @@ export function MegaOccasionsPanel() {
             <OccasionAccordion id="fabric" title="Fabric" openId={openId} setOpenId={setOpenId}>
               {(["Crepe", "Chiffon", "Cotton", "Linen"] as const).map((f) => (
                 <label key={f} className="flex cursor-pointer items-center gap-2 py-1 text-sm">
-                  <input type="checkbox" className="accent-[#74866a]" />
+                  <input type="checkbox" className="accent-[var(--lf-purple-deep)]" />
                   {f}
                 </label>
               ))}
@@ -179,7 +178,7 @@ export function MegaOccasionsPanel() {
 
           <Link
             href="/custom"
-            className="mt-6 inline-flex w-full items-center justify-center border border-[#74866a] bg-[#74866a] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#65755f]"
+            className="mt-6 inline-flex w-full items-center justify-center border border-[var(--lf-purple-deep)] bg-[var(--lf-purple-deep)] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[var(--lf-purple)]"
           >
             Start a custom request
           </Link>

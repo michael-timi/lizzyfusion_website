@@ -15,6 +15,21 @@ export function parseGeminiFailure(error: unknown): GeminiFailureParsed {
   const retryMatch = raw.match(/retry in ([\d.]+)\s*s/i);
   const retryAfterSec = retryMatch ? Math.max(1, Math.ceil(parseFloat(retryMatch[1]))) : undefined;
 
+  /** Model overload / regional capacity — distinct from quota (429). */
+  const isTemporaryUnavailable =
+    /UNAVAILABLE/i.test(raw) ||
+    /"status"\s*:\s*"UNAVAILABLE"/i.test(raw) ||
+    (/\b503\b/.test(raw) && /high demand|temporarily unavailable|overload|try again later/i.test(raw));
+
+  if (isTemporaryUnavailable) {
+    return {
+      userMessage:
+        "Gemini is temporarily at capacity (high demand on this model). Spikes are usually short — wait 1–2 minutes, then retry “Refresh AI suggestions” or hero generation. If it persists, check https://ai.google.dev/gemini-api/docs/rate-limits and your AI Studio project.",
+      httpStatus: 503,
+      retryAfterSec: retryAfterSec ?? 60,
+    };
+  }
+
   const isQuotaOrRateLimit =
     /\b429\b/i.test(raw) ||
     /RESOURCE_EXHAUSTED/i.test(raw) ||

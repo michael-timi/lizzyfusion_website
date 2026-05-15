@@ -41,10 +41,14 @@ function pickOne<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+/** Shared catalogue framing for gowns / maxi — hem floats above mannequin feet unless reference pools on floor. */
+const FULL_LENGTH_HEM_ON_MANNEQUIN =
+  "For floor-length gowns, maxi dresses, kaftans, abayas, aso-ebi, and similar full-length styles: preserve the garment's long silhouette and designed length from the reference, but the skirt hem may end at ankle level or slightly above the mannequin's feet and stand (typical boutique catalogue styling). Do not extend or pool the skirt to cover the mannequin's feet or touch the studio floor unless the reference clearly shows that.";
+
 function describeDressCategory(category: DressCategory | undefined): string {
   switch (category) {
     case "evening-gown":
-      return "Treat the garment as a women's evening gown; show the full length and elegant drape.";
+      return "Treat the garment as a women's evening gown; show the full length and elegant drape. " + FULL_LENGTH_HEM_ON_MANNEQUIN;
     case "cocktail-dress":
       return "Treat the garment as a women's cocktail dress; keep the silhouette polished and occasion-ready.";
     case "bridal-dress":
@@ -52,15 +56,15 @@ function describeDressCategory(category: DressCategory | undefined): string {
     case "casual-dress":
       return "Treat the garment as a women's casual dress; keep the presentation clean, relaxed, and realistic.";
     case "maxi-dress":
-      return "Treat the garment as a women's maxi dress; show the complete hem and floor-length fall.";
+      return "Treat the garment as a women's maxi dress; preserve floor-length fall. " + FULL_LENGTH_HEM_ON_MANNEQUIN;
     case "midi-dress":
       return "Treat the garment as a women's midi dress; show the full body and natural hem placement below the knee.";
     case "mini-dress":
       return "Treat the garment as a women's mini dress; keep the hem length faithful and do not lengthen it.";
     case "kaftan":
-      return "Treat the garment as a women's kaftan; preserve loose volume, sleeve width, embroidery, and modest drape.";
+      return "Treat the garment as a women's kaftan; preserve loose volume, sleeve width, embroidery, and modest drape. " + FULL_LENGTH_HEM_ON_MANNEQUIN;
     case "aso-ebi":
-      return "Treat the garment as a women's aso-ebi or occasion dress; preserve embellishment, structured tailoring, wrapper details, and head-to-toe elegance.";
+      return "Treat the garment as a women's aso-ebi or occasion dress; preserve embellishment, structured tailoring, wrapper details, and head-to-toe elegance. " + FULL_LENGTH_HEM_ON_MANNEQUIN;
     case "auto":
     default:
       return "Infer the women's dress category from the photo without changing the design.";
@@ -164,6 +168,8 @@ Scene:
 - ${describeCameraAngle(opts.cameraAngle)}
 - ${describePositionStyle(opts.positionStyle)}
 - No busy props, no logos, no text in the image.
+- Full-body framing: include the mannequin from head (faceless) to feet in frame; do not crop the dress hem out of the image.
+- ${FULL_LENGTH_HEM_ON_MANNEQUIN}
 - Professional modest-fashion lookbook quality, realistic photography (not illustration) unless the source is already illustrated.
 
 Output:

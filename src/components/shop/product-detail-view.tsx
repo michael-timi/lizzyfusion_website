@@ -5,6 +5,11 @@ import { useMemo, useState, type ReactNode } from "react";
 import { addCartLine } from "@/lib/cart";
 import type { CatalogProduct } from "@/lib/catalog";
 import { catalogWhatsappPriceLine } from "@/lib/catalog-pricing";
+import {
+  getStyleVariantById,
+  priceViewForSelection,
+  productHasStyleVariants,
+} from "@/lib/catalog-style-variants";
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { formatNgn, site, whatsappHref } from "@/lib/site";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
@@ -13,6 +18,7 @@ import { WishlistHeart } from "./wishlist-heart";
 type Props = {
   product: CatalogProduct;
   gallery: string[];
+  variantIdsByIndex?: string[][];
   related: CatalogProduct[];
 };
 
@@ -63,8 +69,11 @@ function AccordionRow({
   );
 }
 
-export function ProductDetailView({ product, gallery, related }: Props) {
+export function ProductDetailView({ product, gallery, variantIdsByIndex = [], related }: Props) {
+  const hasStyles = productHasStyleVariants(product);
+  const initialVariantId = hasStyles ? (product.styleVariants?.[0]?.id ?? null) : null;
   const [activeIndex, setActiveIndex] = useState(0);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(initialVariantId);
   const [selectedSwatch, setSelectedSwatch] = useState(0);
   const [size, setSize] = useState<string>(SIZES[1] ?? "");
   const [accOpen, setAccOpen] = useState<Record<string, boolean>>({
@@ -75,19 +84,52 @@ export function ProductDetailView({ product, gallery, related }: Props) {
   });
 
   const mainSrc = gallery[activeIndex] ?? product.image;
+  const priceView = priceViewForSelection(product, selectedVariantId);
+  const selectedVariant = getStyleVariantById(product, selectedVariantId);
+  const selectedStyleLabel = selectedVariant?.label;
+
+  const activeStyleIds = variantIdsByIndex[activeIndex] ?? [];
+
+  const selectGalleryIndex = (index: number) => {
+    setActiveIndex(index);
+    const ids = variantIdsByIndex[index] ?? [];
+    if (ids.length === 1) setSelectedVariantId(ids[0]!);
+    else if (ids.length > 1) {
+      const cheapest = ids
+        .map((id) => getStyleVariantById(product, id))
+        .filter((v): v is NonNullable<typeof v> => Boolean(v))
+        .sort((a, b) => a.price - b.price)[0];
+      if (cheapest) setSelectedVariantId(cheapest.id);
+    }
+  };
+
+  const selectStyleVariant = (variantId: string) => {
+    setSelectedVariantId(variantId);
+    const v = getStyleVariantById(product, variantId);
+    if (v?.image) {
+      const idx = gallery.indexOf(v.image);
+      if (idx >= 0) setActiveIndex(idx);
+      return;
+    }
+    const linkIdx = product.galleryStyleLinks?.find((l) => l.styleIds.includes(variantId))?.image;
+    if (linkIdx) {
+      const idx = gallery.indexOf(linkIdx);
+      if (idx >= 0) setActiveIndex(idx);
+    }
+  };
 
   const waHref = useMemo(() => {
     const lines = [
       `*${site.name} — product enquiry*`,
       `Product: ${product.name}`,
-      catalogWhatsappPriceLine(product),
+      catalogWhatsappPriceLine(priceView, selectedStyleLabel),
       `Colour preference: swatch ${selectedSwatch + 1} (see PDP)`,
       `Preferred size: ${size}`,
       `My name and any tweaks (lining, length, sleeves):`,
       `(please fill before sending)`,
     ];
     return whatsappHref(lines.join("\n"));
-  }, [product, selectedSwatch, size]);
+  }, [priceView, product.name, selectedStyleLabel, selectedSwatch, size]);
 
   const toggleAcc = (id: string) => {
     setAccOpen((s) => ({ ...s, [id]: !s[id] }));
@@ -118,7 +160,7 @@ export function ProductDetailView({ product, gallery, related }: Props) {
             <button
               key={`${url}-${i}`}
               type="button"
-              onClick={() => setActiveIndex(i)}
+              onClick={() => selectGalleryIndex(i)}
               className={`relative aspect-[3/4] w-full overflow-hidden border bg-zinc-100 transition ${
                 activeIndex === i ? "border-[var(--lf-ink)] ring-1 ring-[var(--lf-ink)]" : "border-[var(--lf-line)] hover:border-zinc-400"
               }`}
@@ -136,7 +178,7 @@ export function ProductDetailView({ product, gallery, related }: Props) {
               <button
                 key={`m-${url}-${i}`}
                 type="button"
-                onClick={() => setActiveIndex(i)}
+                onClick={() => selectGalleryIndex(i)}
                 className={`relative h-28 w-20 shrink-0 overflow-hidden border bg-zinc-100 ${
                   activeIndex === i ? "border-[var(--lf-ink)]" : "border-[var(--lf-line)]"
                 }`}
@@ -158,6 +200,19 @@ export function ProductDetailView({ product, gallery, related }: Props) {
             />
             <WishlistHeart slug={product.slug} className="absolute right-3 top-3 z-10" />
           </div>
+          {hasStyles && activeStyleIds.length > 0 ? (
+            <p className="text-center text-xs leading-relaxed text-[var(--lf-muted)]">
+              This photo shows:{" "}
+              {activeStyleIds
+                .map((id) => {
+                  const v = getStyleVariantById(product, id);
+                  return v ? `${v.label} (${formatNgn(v.price)})` : null;
+                })
+                .filter(Boolean)
+                .join(" · ")}
+              {activeStyleIds.length > 1 ? " — choose your style below to update the price." : ""}
+            </p>
+          ) : null}
         </div>
 
         {/* Product panel */}
@@ -170,9 +225,40 @@ export function ProductDetailView({ product, gallery, related }: Props) {
           <div className="mt-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-ink)]">Price</p>
             <div className="mt-1.5">
-              <CatalogPriceStack product={product} align="start" />
+              <CatalogPriceStack product={{ ...product, ...priceView }} align="start" />
             </div>
           </div>
+
+          {hasStyles && product.styleVariants ? (
+            <div className="mt-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--lf-ink)]">Style</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {product.styleVariants.map((v) => {
+                  const inActivePhoto = activeStyleIds.includes(v.id);
+                  const selected = selectedVariantId === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => selectStyleVariant(v.id)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                        selected
+                          ? "border-[var(--lf-ink)] bg-[var(--lf-ink)] text-white"
+                          : inActivePhoto
+                            ? "border-violet-400 bg-violet-50 text-[var(--lf-ink)]"
+                            : "border-[var(--lf-line)] bg-white text-[var(--lf-ink)] hover:border-[var(--lf-purple)]"
+                      }`}
+                    >
+                      {v.label} · {formatNgn(v.price)}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs text-[var(--lf-muted)]">
+                Combo photos can show several styles at once — pick the style you want; the price updates to match.
+              </p>
+            </div>
+          ) : null}
 
           {"sourceImage" in product && typeof product.sourceImage === "string" && product.sourceImage.startsWith("https://") ? (
             <div className="mt-8 border-t border-[var(--lf-line)] pt-6">
@@ -238,7 +324,7 @@ export function ProductDetailView({ product, gallery, related }: Props) {
             rel="noreferrer"
             className="mt-8 flex w-full items-center justify-center bg-[var(--lf-purple-deep)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple)]"
           >
-            Enquire on WhatsApp — {formatNgn(product.price)}
+            Enquire on WhatsApp — {formatNgn(priceView.price)}
           </a>
 
           <button
@@ -247,10 +333,12 @@ export function ProductDetailView({ product, gallery, related }: Props) {
               addCartLine({
                 slug: product.slug,
                 size,
-                color: SWATCH_NAMES[selectedSwatch] ?? `Option ${selectedSwatch + 1}`,
-                unitPrice: product.price,
+                color: selectedStyleLabel
+                  ? `${selectedStyleLabel} · ${SWATCH_NAMES[selectedSwatch] ?? `Swatch ${selectedSwatch + 1}`}`
+                  : SWATCH_NAMES[selectedSwatch] ?? `Option ${selectedSwatch + 1}`,
+                unitPrice: priceView.price,
                 productName: product.name,
-                productImage: product.image,
+                productImage: mainSrc,
               })
             }
             className="mt-3 w-full border border-[var(--lf-ink)] bg-white px-6 py-3 text-sm font-semibold text-[var(--lf-ink)] transition hover:border-[var(--lf-purple-deep)] hover:bg-zinc-50"

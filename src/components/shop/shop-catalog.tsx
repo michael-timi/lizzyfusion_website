@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import { useMemo, useState } from "react";
-import { catalogWhatsappPriceLine, type CatalogPricePick } from "@/lib/catalog-pricing";
+import { catalogDisplayPrice, catalogWhatsappPriceLine, type CatalogPricePick } from "@/lib/catalog-pricing";
 import { site, whatsappHref } from "@/lib/site";
 import { ProductFilters, type SortKey } from "./product-filters";
 import { WishlistHeart } from "./wishlist-heart";
@@ -135,14 +135,22 @@ export function ShopCatalog({ query, products }: ShopCatalogProps) {
   const [sort, setSort] = useState<SortKey>("featured");
   const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
 
+  const collectionOptions = useMemo(() => {
+    const set = new Set<string>(site.specialties);
+    for (const p of products) {
+      if (p.tag.trim()) set.add(p.tag.trim());
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [products]);
+
   const filtered = useMemo(() => {
     let list = [...products];
     if (selectedCollections.size > 0) {
       list = list.filter((p) => selectedCollections.has(p.tag));
     }
     list.sort((a, b) => {
-      if (sort === "price-asc") return a.price - b.price;
-      if (sort === "price-desc") return b.price - a.price;
+      if (sort === "price-asc") return catalogDisplayPrice(a) - catalogDisplayPrice(b);
+      if (sort === "price-desc") return catalogDisplayPrice(b) - catalogDisplayPrice(a);
       return 0;
     });
     return list;
@@ -188,6 +196,7 @@ export function ShopCatalog({ query, products }: ShopCatalogProps) {
           selectedCollections={selectedCollections}
           onToggleCollection={toggleCollection}
           onClearAll={clearAll}
+          collectionOptions={collectionOptions}
         />
 
         <div className="min-w-0 flex-1">

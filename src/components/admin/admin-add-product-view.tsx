@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FirebaseError } from "firebase/app";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import type { CatalogProduct } from "@/lib/catalog";
 import {
@@ -21,7 +23,22 @@ import type {
   StudioLighting,
 } from "@/lib/gemini-catalog-hero";
 import type { CatalogSuggestFromHero } from "@/lib/gemini-catalog-suggest-from-hero";
+import {
+  AdminStyleVariantsFields,
+  styleDraftsFromSuggestVariants,
+  styleVariantsFromFirestore,
+  type StyleVariantDraft,
+} from "@/components/admin/admin-style-variants-fields";
+import { AdminFormBusyOverlay } from "@/components/admin/admin-form-busy-overlay";
+import { buildStyleVariantsForSave, catalogDocForFirestore } from "@/lib/admin-catalog-save-helpers";
+import {
+  AdminGalleryStyleLinks,
+  resolveGalleryStyleLinksForSave,
+} from "@/components/admin/admin-gallery-style-links";
+import { withListingPriceFromVariants } from "@/lib/catalog-style-variants";
 import { AdminFormErrorBanner } from "@/components/admin/admin-form-error-banner";
+import { adminFormFeedbackPadding } from "@/components/admin/admin-form-feedback";
+import { AdminFormSuccessBanner } from "@/components/admin/admin-form-success-banner";
 import { useFirebaseAuth } from "@/components/auth/firebase-auth-provider";
 import { requestCatalogRevalidation } from "@/lib/catalog-revalidate-client";
 import { getFirebaseDb } from "@/lib/firebase-db";
@@ -105,6 +122,7 @@ function imageFileExtension(mime: string): string {
 }
 
 export function AdminAddProductView() {
+  const router = useRouter();
   const db = useMemo(() => getFirebaseDb(), []);
   const storage = useMemo(() => getFirebaseStorage(), []);
   const { user, isAdmin, profileLoading } = useFirebaseAuth();
@@ -143,11 +161,18 @@ export function AdminAddProductView() {
   const [suggestAppliedAt, setSuggestAppliedAt] = useState<number | null>(null);
   const lastSuggestedHeroKeyRef = useRef<string | null>(null);
   const heroSuggestEpochRef = useRef(0);
+  const heroPreviewUrlRef = useRef<string | null>(null);
 
   const [geminiBusy, setGeminiBusy] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [publishMessage, setPublishMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [doneSlug, setDoneSlug] = useState<string | null>(null);
+  const [stylesEnabled, setStylesEnabled] = useState(false);
+  const [styleDrafts, setStyleDrafts] = useState<StyleVariantDraft[]>(() =>
+    styleVariantsFromFirestore(undefined),
+  );
+  const [galleryStyleLinksByUrl, setGalleryStyleLinksByUrl] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     if (!sourceFile) return;
@@ -162,12 +187,42 @@ export function AdminAddProductView() {
   useEffect(() => {
     if (!heroFile) return;
     const url = URL.createObjectURL(heroFile);
-    queueMicrotask(() => setHeroPreviewUrl(url));
+    queueMicrotask(() => {
+      setHeroPreviewUrl(url);
+      heroPreviewUrlRef.current = url;
+    });
     return () => {
       URL.revokeObjectURL(url);
-      queueMicrotask(() => setHeroPreviewUrl(null));
+      queueMicrotask(() => {
+        setHeroPreviewUrl(null);
+        heroPreviewUrlRef.current = null;
+      });
     };
   }, [heroFile]);
+
+  const [galleryPreviewUrls, setGalleryPreviewUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const urls = galleryFiles.map((f) => URL.createObjectURL(f));
+    queueMicrotask(() => setGalleryPreviewUrls(urls));
+    return () => {
+      for (const u of urls) URL.revokeObjectURL(u);
+      queueMicrotask(() => setGalleryPreviewUrls([]));
+    };
+  }, [galleryFiles]);
+
+  const linkableImageUrls = useMemo(() => {
+    const urls: string[] = [];
+    const push = (u: string | null | undefined) => {
+      if (u && u.length > 10 && !urls.includes(u)) urls.push(u);
+    };
+    push(heroPreviewUrl);
+    for (const u of galleryPreviewUrls) push(u);
+    for (const d of styleDrafts) {
+      const u = d.imageUrl.trim();
+      if (u.startsWith("https://")) push(u);
+    }
+    return urls.slice(0, 6);
+  }, [heroPreviewUrl, galleryPreviewUrls, styleDrafts]);
 
   const suggestSlug = useCallback(() => {
     const s = slugify(name);
@@ -178,8 +233,6 @@ export function AdminAddProductView() {
     setSlug(s.slug);
     setName(s.name);
     setTag(s.tag);
-    setPriceStr(String(s.priceNgn));
-    setCompareAtStr("");
     setLead(s.lead);
     setDescription(s.description);
     setFittingNotes(s.fittingNotes ?? "");
@@ -197,6 +250,27 @@ export function AdminAddProductView() {
     setCameraAngle(s.cameraAngle);
     setGalleryRestrictNoLookbook(s.galleryRestrictNoLookbook);
     setHeroNotes(s.heroNotes ?? "");
+
+    const variants = s.suggestedStyleVariants;
+    if (s.multiStyleRecommended && variants && variants.length > 0) {
+      setStylesEnabled(true);
+      setStyleDrafts(styleDraftsFromSuggestVariants(variants));
+      setPriceStr("");
+      setCompareAtStr("");
+    } else {
+      setStylesEnabled(false);
+      setStyleDrafts(styleVariantsFromFirestore(undefined));
+      const listingPrice =
+        variants?.length === 1 ? variants[0]!.priceNgn : s.priceNgn;
+      setPriceStr(String(listingPrice));
+      setCompareAtStr("");
+    }
+
+    const heroKey = heroPreviewUrlRef.current;
+    const visible = s.stylesVisibleInHero;
+    if (heroKey && visible?.length) {
+      setGalleryStyleLinksByUrl((prev) => ({ ...prev, [heroKey]: [...visible] }));
+    }
   }, []);
 
   const suggestFromHero = useCallback(
@@ -348,23 +422,24 @@ export function AdminAddProductView() {
       return;
     }
 
-    const price = Math.round(Number(priceStr.replace(/,/g, "")));
-    if (!Number.isFinite(price) || price < 0) {
-      setError("Price must be a non-negative number (stored as whole Naira).");
-      return;
-    }
-
+    let price = Math.round(Number(priceStr.replace(/,/g, "")));
     let compareAtPrice: number | undefined;
-    const compareRaw = compareAtStr.trim().replace(/,/g, "");
-    if (compareRaw.length > 0) {
-      const cap = Math.round(Number(compareRaw));
-      if (!Number.isFinite(cap) || cap <= price) {
-        setError(
-          "Compare-at price (optional) must be a whole Naira amount strictly greater than the current price, or leave it blank.",
-        );
+    if (!stylesEnabled) {
+      if (!Number.isFinite(price) || price < 0) {
+        setError("Price must be a non-negative number (stored as whole Naira).");
         return;
       }
-      compareAtPrice = cap;
+      const compareRaw = compareAtStr.trim().replace(/,/g, "");
+      if (compareRaw.length > 0) {
+        const cap = Math.round(Number(compareRaw));
+        if (!Number.isFinite(cap) || cap <= price) {
+          setError(
+            "Compare-at price (optional) must be a whole Naira amount strictly greater than the current price, or leave it blank.",
+          );
+          return;
+        }
+        compareAtPrice = cap;
+      }
     }
 
     if (!name.trim() || !tag.trim() || !lead.trim() || !description.trim()) {
@@ -381,10 +456,33 @@ export function AdminAddProductView() {
       return;
     }
 
+    const leadT = lead.trim();
+    const descriptionT = description.trim();
+    const nameT = name.trim();
+    const tagT = tag.trim();
+    if (nameT.length >= 200) {
+      setError("Product name must be under 200 characters (Firestore catalogue limit). Shorten the name and try again.");
+      return;
+    }
+    if (tagT.length >= 120) {
+      setError("Collection tag must be under 120 characters. Shorten the tag and try again.");
+      return;
+    }
+    if (leadT.length > 4000) {
+      setError("Lead time / fulfilment copy must be at most 4,000 characters. Shorten the lead field and try again.");
+      return;
+    }
+    if (descriptionT.length > 20_000) {
+      setError("Description must be at most 20,000 characters. Shorten the description and try again.");
+      return;
+    }
+
     setBusy(true);
+    setPublishMessage("Checking slug…");
     let sourcePath: string | null = null;
     let heroPath: string | null = null;
     const galleryPaths: string[] = [];
+    let cataloguePayloadForDebug: CatalogProduct | undefined;
     try {
       const ref = doc(db, "catalog_products", s);
       const existing = await getDoc(ref);
@@ -395,15 +493,20 @@ export function AdminAddProductView() {
 
       let sourceUp: { downloadUrl: string; storagePath: string } | null = null;
       if (sourceFile) {
+        setPublishMessage("Uploading original garment photo…");
         sourceUp = await uploadCatalogProductSourceImage(storage, user.uid, s, sourceFile);
         sourcePath = sourceUp.storagePath;
       }
 
+      setPublishMessage("Uploading hero image…");
       const heroUp = await uploadCatalogProductHeroImage(storage, user.uid, s, heroFile);
       heroPath = heroUp.storagePath;
 
       const galleryUrls: string[] = [];
-      for (const f of galleryFiles.slice(0, 6)) {
+      const gallerySlice = galleryFiles.slice(0, 6);
+      for (let i = 0; i < gallerySlice.length; i++) {
+        const f = gallerySlice[i]!;
+        setPublishMessage(`Uploading gallery image ${i + 1} of ${gallerySlice.length}…`);
         const g = await uploadCatalogProductGalleryImage(storage, user.uid, s, f);
         galleryPaths.push(g.storagePath);
         galleryUrls.push(g.downloadUrl);
@@ -419,14 +522,22 @@ export function AdminAddProductView() {
         .filter(Boolean)
         .slice(0, 8);
 
-      const payload: CatalogProduct = {
+      let styleVariants;
+      if (stylesEnabled) {
+        setPublishMessage("Uploading style photos…");
+        styleVariants = await buildStyleVariantsForSave(styleDrafts, storage, user.uid, s);
+        price = Math.min(...styleVariants.map((v) => v.price));
+        compareAtPrice = undefined;
+      }
+
+      let payload: CatalogProduct = {
         slug: s,
-        name: name.trim(),
-        tag: tag.trim(),
+        name: nameT,
+        tag: tagT,
         price,
         ...(compareAtPrice !== undefined ? { compareAtPrice } : {}),
-        lead: lead.trim(),
-        description: description.trim(),
+        lead: leadT,
+        description: descriptionT,
         image: heroUp.downloadUrl,
         ...(sourceUp ? { sourceImage: sourceUp.downloadUrl } : {}),
         ...(galleryImageUrls !== undefined ? { galleryImageUrls } : {}),
@@ -437,11 +548,21 @@ export function AdminAddProductView() {
         ...(craftFabricLabels.length ? { craftFabricLabels } : {}),
         ...(colourAvailabilityNotes.trim() ? { colourAvailabilityNotes: colourAvailabilityNotes.trim() } : {}),
       };
+      const styleLinks = stylesEnabled
+        ? resolveGalleryStyleLinksForSave(galleryStyleLinksByUrl, [
+            ...(heroPreviewUrl ? [{ from: heroPreviewUrl, to: heroUp.downloadUrl }] : []),
+            ...galleryPreviewUrls.map((from, i) => ({ from, to: galleryUrls[i]! })).filter((m) => m.to),
+          ])
+        : undefined;
+      payload = withListingPriceFromVariants(payload, styleVariants, styleLinks);
 
-      await setDoc(ref, payload);
-      // Invalidate the storefront catalogue cache so the "View on storefront" link below works
-      // immediately instead of 404'ing until the unstable_cache TTL expires.
+      cataloguePayloadForDebug = payload;
+      setPublishMessage("Saving to catalogue…");
+      await setDoc(ref, catalogDocForFirestore(payload));
+      setPublishMessage("Updating storefront cache…");
       await requestCatalogRevalidation(user, s);
+      router.refresh();
+      setError(null);
       setDoneSlug(s);
       setSlug("");
       setName("");
@@ -461,6 +582,9 @@ export function AdminAddProductView() {
       setLighting("softbox");
       setCameraAngle("front");
       setGalleryFiles([]);
+      setGalleryStyleLinksByUrl({});
+      setStylesEnabled(false);
+      setStyleDrafts(styleVariantsFromFirestore(undefined));
       setGalleryRestrictNoLookbook(true);
       setFittingNotes("");
       setFabricCareNotes("");
@@ -470,6 +594,19 @@ export function AdminAddProductView() {
       setColourAvailabilityNotes("");
       setSuggestAppliedAt(null);
     } catch (err) {
+      const payloadSummary = cataloguePayloadForDebug && {
+        slug: cataloguePayloadForDebug.slug,
+        price: cataloguePayloadForDebug.price,
+        compareAtPrice: cataloguePayloadForDebug.compareAtPrice,
+        fieldKeys: Object.keys(cataloguePayloadForDebug),
+        heroImageUrlLength: cataloguePayloadForDebug.image?.length,
+        heroImageUrlPrefix: cataloguePayloadForDebug.image?.slice(0, 48),
+      };
+      const firebaseMeta =
+        err instanceof FirebaseError
+          ? { firebaseCode: err.code, firebaseMessage: err.message }
+          : {};
+      console.error("[admin/catalog/add] publish failed", { slug: s, uid: user?.uid, payloadSummary, ...firebaseMeta }, err);
       for (const p of galleryPaths) {
         if (storage) {
           try {
@@ -493,10 +630,14 @@ export function AdminAddProductView() {
           /* best-effort */
         }
       }
-      const msg = err instanceof Error ? err.message : "Could not save product.";
+      let msg = err instanceof Error ? err.message : "Could not save product.";
+      if (err instanceof FirebaseError && err.code === "permission-denied") {
+        msg = `Firestore rejected this save (permission denied). If users/${user?.uid ?? "YOUR_UID"} already has userType admin, the payload likely failed catalogue validation (e.g. name/tag/lead/description length limits, https image URL). Deploy the latest firestore.rules (npm run firebase:deploy:rules).`;
+      }
       setError(msg);
     } finally {
       setBusy(false);
+      setPublishMessage(null);
     }
   }
 
@@ -504,7 +645,7 @@ export function AdminAddProductView() {
   const canPublish = Boolean(heroFile && canUseStorage);
 
   return (
-    <div className={`mx-auto max-w-2xl space-y-8 ${error ? "pb-28 sm:pb-8" : ""}`}>
+    <div className={`mx-auto max-w-2xl space-y-8 ${adminFormFeedbackPadding(Boolean(error || doneSlug))}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">Add catalogue product</h2>
@@ -524,18 +665,15 @@ export function AdminAddProductView() {
         </Link>
       </div>
 
-      {doneSlug ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-900">
-          <p className="font-medium">Saved “{doneSlug}”.</p>
-          <p className="mt-1 text-emerald-800/90">
-            <Link href={`/shop/${doneSlug}`} className="font-semibold underline underline-offset-2">
-              View on storefront
-            </Link>
-          </p>
-        </div>
-      ) : null}
-
-      <form onSubmit={onSubmit} className="space-y-5 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <form
+        onSubmit={onSubmit}
+        className="relative space-y-5 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm"
+      >
+        <AdminFormBusyOverlay
+          active={busy}
+          title="Publishing to catalogue"
+          message={publishMessage ?? "Please keep this tab open…"}
+        />
         <fieldset className="space-y-3 rounded-xl border border-zinc-200 bg-[var(--lf-purple-faint)]/40 p-4">
           <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
             1. Mannequin hero (required)
@@ -644,8 +782,8 @@ export function AdminAddProductView() {
               <div className="min-w-0 flex-1 text-sm leading-snug text-emerald-900">
                 <p className="font-semibold">Suggestions applied — review and edit below before publishing.</p>
                 <p className="mt-0.5 text-xs text-emerald-800/90">
-                  Everything Gemini drafted is fully editable. Use “Refresh AI suggestions” to try again if anything
-                  looks off.
+                  Copy, dress category, and style/price suggestions are fully editable. Check dress styles and
+                  “Which styles does each photo show?” before publishing. Use “Refresh AI suggestions” to try again.
                 </p>
               </div>
               <button
@@ -714,41 +852,53 @@ export function AdminAddProductView() {
           <input id="ap-tag" className={`${inputClass} mt-1.5`} value={tag} onChange={(e) => setTag(e.target.value)} required />
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ap-price">
-            Price (₦, whole number)
-          </label>
-          <input
-            id="ap-price"
-            className={`${inputClass} mt-1.5`}
-            inputMode="numeric"
-            value={priceStr}
-            onChange={(e) => setPriceStr(e.target.value)}
-            placeholder="85000"
-            required
-          />
-        </div>
+        {!stylesEnabled ? (
+          <>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ap-price">
+                Price (₦, whole number)
+              </label>
+              <input
+                id="ap-price"
+                className={`${inputClass} mt-1.5`}
+                inputMode="numeric"
+                value={priceStr}
+                onChange={(e) => setPriceStr(e.target.value)}
+                placeholder="85000"
+                required
+              />
+            </div>
 
-        <div>
-          <label
-            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
-            htmlFor="ap-compare-at"
-          >
-            Compare-at price (₦, optional)
-          </label>
-          <input
-            id="ap-compare-at"
-            className={`${inputClass} mt-1.5`}
-            inputMode="numeric"
-            value={compareAtStr}
-            onChange={(e) => setCompareAtStr(e.target.value)}
-            placeholder="Leave blank unless this piece is on sale"
-          />
-          <p className="mt-1 text-xs text-[var(--lf-muted)]">
-            When set, must be higher than the price above (shown as strikethrough “was” on the shop). Checkout still uses
-            the current price.
-          </p>
-        </div>
+            <div>
+              <label
+                className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+                htmlFor="ap-compare-at"
+              >
+                Compare-at price (₦, optional)
+              </label>
+              <input
+                id="ap-compare-at"
+                className={`${inputClass} mt-1.5`}
+                inputMode="numeric"
+                value={compareAtStr}
+                onChange={(e) => setCompareAtStr(e.target.value)}
+                placeholder="Leave blank unless this piece is on sale"
+              />
+              <p className="mt-1 text-xs text-[var(--lf-muted)]">
+                When set, must be higher than the price above (shown as strikethrough “was” on the shop). Checkout still
+                uses the current price.
+              </p>
+            </div>
+          </>
+        ) : null}
+
+        <AdminStyleVariantsFields
+          enabled={stylesEnabled}
+          onEnabledChange={setStylesEnabled}
+          drafts={styleDrafts}
+          onDraftsChange={setStyleDrafts}
+          disabled={busy || suggestBusy}
+        />
 
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ap-lead">
@@ -842,6 +992,16 @@ export function AdminAddProductView() {
               </ul>
             ) : null}
           </div>
+
+          {stylesEnabled ? (
+            <AdminGalleryStyleLinks
+              imageUrls={linkableImageUrls}
+              styleDrafts={styleDrafts}
+              linksByUrl={galleryStyleLinksByUrl}
+              onLinksChange={setGalleryStyleLinksByUrl}
+              disabled={busy || suggestBusy}
+            />
+          ) : null}
 
           <div>
             <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-colour-notes">
@@ -1143,7 +1303,7 @@ export function AdminAddProductView() {
           </div>
         </fieldset>
 
-        <div className="flex flex-wrap gap-3 pt-2">
+        <div className="flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-4">
           <button
             type="submit"
             disabled={busy || suggestBusy || !canPublish}
@@ -1151,8 +1311,23 @@ export function AdminAddProductView() {
           >
             {busy ? "Publishing…" : suggestBusy ? "Waiting for AI draft…" : "Publish to catalogue"}
           </button>
+          {busy ? (
+            <p className="text-xs text-[var(--lf-muted)]" aria-live="polite">
+              {publishMessage ?? "Working…"}
+            </p>
+          ) : null}
         </div>
       </form>
+
+      {doneSlug ? (
+        <AdminFormSuccessBanner
+          title={`Published “${doneSlug}” to the catalogue`}
+          action={{ href: `/shop/${doneSlug}`, label: "View on storefront" }}
+          onDismiss={() => setDoneSlug(null)}
+        >
+          Form cleared — you can add another product, or dismiss this message.
+        </AdminFormSuccessBanner>
+      ) : null}
 
       <AdminFormErrorBanner message={error} onDismiss={() => setError(null)} />
     </div>

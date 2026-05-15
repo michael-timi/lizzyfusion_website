@@ -1,8 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { site } from "@/lib/site";
-
 export type SortKey = "featured" | "price-asc" | "price-desc";
 
 type ProductFiltersProps = {
@@ -11,6 +9,8 @@ type ProductFiltersProps = {
   selectedCollections: Set<string>;
   onToggleCollection: (label: string) => void;
   onClearAll: () => void;
+  /** Collection labels from the live catalogue (merged with site specialties). */
+  collectionOptions: readonly string[];
 };
 
 const fabrics = ["Cotton", "Linen", "Silk", "Crepe", "Chiffon"] as const;
@@ -22,6 +22,7 @@ export function ProductFilters({
   selectedCollections,
   onToggleCollection,
   onClearAll,
+  collectionOptions,
 }: ProductFiltersProps) {
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -128,17 +129,21 @@ export function ProductFilters({
 
         <FilterAccordion id="collection" title="Collection" openId={openId} setOpenId={setOpenId}>
           <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
-            {site.specialties.map((label) => (
-              <label key={label} className="flex cursor-pointer items-center gap-2 py-1 text-sm">
-                <input
-                  type="checkbox"
-                  checked={selectedCollections.has(label)}
-                  onChange={() => onToggleCollection(label)}
-                  className="accent-[var(--lf-purple)]"
-                />
-                {label}
-              </label>
-            ))}
+            {collectionOptions.length === 0 ? (
+              <p className="text-xs text-[var(--lf-muted)]">No collections in the current list.</p>
+            ) : (
+              collectionOptions.map((label) => (
+                <label key={label} className="flex cursor-pointer items-center gap-2 py-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedCollections.has(label)}
+                    onChange={() => onToggleCollection(label)}
+                    className="accent-[var(--lf-purple)]"
+                  />
+                  {label}
+                </label>
+              ))
+            )}
           </div>
         </FilterAccordion>
 

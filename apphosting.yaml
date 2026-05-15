@@ -10,6 +10,10 @@
 # 5) Deploy: npm run firebase:deploy:apphosting   (or firebase deploy)
 # https://firebase.google.com/docs/app-hosting/configure
 # https://firebase.google.com/docs/app-hosting/alt-deploy
+#
+# Pre-deploy checklist (env, Auth, OAuth, API key referrers, rules, smoke tests):
+#   README.md → section "Firebase App Hosting (pre-deploy)".
+# In-app checklist for custom domain + Google sign-in: /admin/settings
 
 runConfig:
   minInstances: 0
