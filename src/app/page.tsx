@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { HomeHeroSlider } from "@/components/home/home-hero-slider";
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
@@ -26,89 +26,39 @@ export default async function HomePage() {
 
   return (
     <div className="bg-white">
-      {/* Hero — founder-led split: typography on the left, portrait + atelier collage on the right. */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[var(--lf-purple-faint)] via-white to-white">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-24 -top-24 h-[28rem] w-[28rem] rounded-full bg-[var(--lf-purple)]/10 blur-3xl"
+      {/* Hero — full-bleed founder slider with the original serif overlay. */}
+      <section className="relative min-h-[min(88vh,40rem)] w-full overflow-hidden">
+        <HomeHeroSlider
+          slides={[
+            { ...landingMedia.founder.portrait, objectPosition: "center 30%" },
+            { ...landingMedia.founder.studio, objectPosition: "center 35%" },
+            { ...landingMedia.founder.atelier, objectPosition: "center 40%" },
+          ]}
         />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-32 bottom-0 h-72 w-72 rounded-full bg-[var(--lf-purple)]/10 blur-3xl"
-        />
-
-        <div className="relative mx-auto grid max-w-[1400px] gap-10 px-4 pb-16 pt-12 sm:px-6 sm:pb-20 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16 lg:pb-24 lg:pt-20">
-          {/* Copy */}
-          <div className="flex flex-col justify-center">
-            <p className="section-title flex items-center gap-3">
-              <span className="h-px w-8 bg-[var(--lf-purple-deep)]" aria-hidden />
-              {landingMedia.founder.role}
-            </p>
-            <h1 className="mt-6 font-serif text-4xl font-medium leading-[1.05] tracking-tight text-[var(--lf-ink)] sm:text-5xl md:text-6xl">
-              Designed by {landingMedia.founder.name}.
-              <span className="mt-3 block text-2xl font-normal text-[var(--lf-purple-deep)] sm:text-3xl md:text-4xl">
-                {site.slogan}
-              </span>
-            </h1>
-            <p className="mt-6 max-w-md text-sm leading-relaxed text-[var(--lf-muted)] sm:text-base">
-              Modest pieces cut, fitted, and finished by hand in {site.location.city},{" "}
-              {site.location.state}. Bespoke, ready-to-wear, and custom design—prices in naira,
-              with WhatsApp guidance from the studio.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/shop" className="btn-sharp">
-                Shop collections
-              </Link>
-              <a
-                href={wa}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center border border-[var(--lf-ink)] px-8 py-3 text-sm font-semibold text-[var(--lf-ink)] transition hover:bg-[var(--lf-ink)] hover:text-white"
-              >
-                WhatsApp studio
-              </a>
-            </div>
-            <p className="mt-8 max-w-md text-xs uppercase tracking-[0.18em] text-[var(--lf-muted)]">
-              Meet {landingMedia.founder.name} — the hands behind every piece.
-            </p>
-          </div>
-
-          {/* Founder collage */}
-          <div className="space-y-3 sm:space-y-4">
-            <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100 shadow-sm ring-1 ring-black/5">
-              <Image
-                src={landingMedia.founder.portrait.src}
-                alt={landingMedia.founder.portrait.alt}
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 45vw"
-                className="object-cover object-top"
-              />
-              <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 bg-white/95 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--lf-ink)] shadow-sm">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--lf-purple-deep)]" aria-hidden />
-                {landingMedia.founder.name} · founder
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div className="relative aspect-[4/5] overflow-hidden bg-zinc-100 shadow-sm ring-1 ring-black/5">
-                <Image
-                  src={landingMedia.founder.studio.src}
-                  alt={landingMedia.founder.studio.alt}
-                  fill
-                  sizes="(max-width: 1024px) 50vw, 22vw"
-                  className="object-cover"
-                />
-              </div>
-              <div className="relative aspect-[4/5] overflow-hidden bg-zinc-100 shadow-sm ring-1 ring-black/5">
-                <Image
-                  src={landingMedia.founder.atelier.src}
-                  alt={landingMedia.founder.atelier.alt}
-                  fill
-                  sizes="(max-width: 1024px) 50vw, 22vw"
-                  className="object-cover"
-                />
-              </div>
-            </div>
+        <div className="relative z-10 mx-auto flex min-h-[min(88vh,40rem)] max-w-[1400px] flex-col justify-end px-4 pb-16 pt-28 sm:px-6 sm:pb-20 lg:pb-24">
+          <p className="max-w-lg font-serif text-4xl font-medium leading-[1.1] tracking-tight text-white sm:text-5xl md:text-6xl">
+            Elegance in modesty.
+            <span className="mt-2 block text-3xl font-normal text-white/90 sm:text-4xl">
+              {site.slogan}
+            </span>
+          </p>
+          <p className="mt-6 max-w-md text-sm leading-relaxed text-white/85 sm:text-base">
+            Bespoke, ready-to-wear, and custom design from {site.location.city},{" "}
+            {site.location.state}. Prices in naira—enquire on WhatsApp to confirm lead
+            times.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/shop" className="btn-sharp">
+              Shop collections
+            </Link>
+            <a
+              href={wa}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center border border-white/80 px-8 py-3 text-sm font-semibold text-white transition hover:bg-white hover:text-[var(--lf-ink)]"
+            >
+              WhatsApp studio
+            </a>
           </div>
         </div>
       </section>
