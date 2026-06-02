@@ -1,10 +1,15 @@
 "use client";
 
+import type { StaticImageData } from "next/image";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 export type HomeHeroSlide = {
-  src: string;
+  /**
+   * Either a `StaticImageData` from a static import (preferred — auto-generates a `blurDataURL`
+   * for the LQIP) or a string URL for cases where the image is hosted elsewhere.
+   */
+  src: StaticImageData | string;
   alt: string;
   /** CSS object-position (e.g. `"center 30%"`) to keep the founder's face visible after cropping. */
   objectPosition?: string;
@@ -64,9 +69,11 @@ export function HomeHeroSlider({ slides, intervalMs = DEFAULT_INTERVAL_MS }: Hom
     >
       {slides.map((slide, i) => {
         const isActive = i === active;
+        const key = typeof slide.src === "string" ? slide.src : slide.src.src;
+        const canBlur = typeof slide.src !== "string";
         return (
           <div
-            key={slide.src}
+            key={key}
             className={`absolute inset-0 transition-opacity duration-1000 ease-out ${
               isActive ? "opacity-100" : "opacity-0"
             }`}
@@ -80,6 +87,7 @@ export function HomeHeroSlider({ slides, intervalMs = DEFAULT_INTERVAL_MS }: Hom
               sizes="100vw"
               className="object-cover"
               style={{ objectPosition: slide.objectPosition ?? "center 30%" }}
+              placeholder={canBlur ? "blur" : "empty"}
             />
           </div>
         );
@@ -95,9 +103,10 @@ export function HomeHeroSlider({ slides, intervalMs = DEFAULT_INTERVAL_MS }: Hom
         <div className="pointer-events-auto absolute bottom-6 right-4 z-20 flex gap-2 sm:bottom-8 sm:right-6">
           {slides.map((slide, i) => {
             const isActive = i === active;
+            const dotKey = typeof slide.src === "string" ? slide.src : slide.src.src;
             return (
               <button
-                key={slide.src}
+                key={dotKey}
                 type="button"
                 onClick={() => goTo(i)}
                 aria-label={`Show slide ${i + 1} of ${slides.length}`}
