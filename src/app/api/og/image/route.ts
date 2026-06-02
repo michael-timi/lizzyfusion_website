@@ -1,4 +1,8 @@
-import { decodeImageSource, isAllowedOgImageSource } from "@/lib/og-image-source";
+import {
+  decodeImageSource,
+  isAllowedOgImageSource,
+  normalizeFirebaseStorageDownloadUrl,
+} from "@/lib/og-image-source";
 import sharp from "sharp";
 
 export const runtime = "nodejs";
@@ -9,7 +13,8 @@ const OG_JPEG_QUALITY = 82;
 const FETCH_TIMEOUT_MS = 20_000;
 
 async function resizeForOgPreview(source: string): Promise<Buffer | null> {
-  const upstream = await fetch(source, {
+  const fetchUrl = normalizeFirebaseStorageDownloadUrl(source);
+  const upstream = await fetch(fetchUrl, {
     cache: "force-cache",
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
