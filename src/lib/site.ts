@@ -232,15 +232,15 @@ export const landingMedia = {
     name: "Lizzy",
     role: "Founder & creative director",
     portrait: {
-      src: "/founder/lizzy-portrait.jpg",
+      src: "/founder/founder-portrait.jpg",
       alt: "Lizzy, founder of Lizzy Fusion, beside a red embellished gown on a dress form",
     },
     studio: {
-      src: "/founder/lizzy-studio.jpg",
+      src: "/founder/founder-studio.jpg",
       alt: "Lizzy seated in the atelier with a red gown on a dress form",
     },
     atelier: {
-      src: "/founder/lizzy-atelier.jpg",
+      src: "/founder/founder-atelier.jpg",
       alt: "Lizzy at the cutting table with thread spools and a beaded red gown",
     },
   },
