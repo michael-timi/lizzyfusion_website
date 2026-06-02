@@ -27,6 +27,12 @@ const DEFAULT_INTERVAL_MS = 6000;
  * Full-bleed background slider for the home hero. Renders rotating images plus the original
  * dark gradient overlay; pagination dots float above the gradient so they stay legible.
  *
+ * Loading UX:
+ * - The container has a brand-dark background so the first paint is never white.
+ * - Every slide gets `priority` (3 hero images is well within budget) so none are lazy-loaded
+ *   and the auto-advance never lands on an unloaded slide.
+ * - `placeholder="blur"` carries the user from blur to sharp inside `next/image` itself.
+ *
  * The text/CTAs render in a sibling overlay in `page.tsx`, kept separate to keep this small
  * and focused on the image rotation behaviour.
  */
@@ -58,7 +64,7 @@ export function HomeHeroSlider({ slides, intervalMs = DEFAULT_INTERVAL_MS }: Hom
 
   return (
     <div
-      className="absolute inset-0 overflow-hidden"
+      className="absolute inset-0 overflow-hidden bg-[var(--lf-ink)]"
       role="region"
       aria-roledescription="carousel"
       aria-label="Lizzy Fusion founder hero"
@@ -74,7 +80,7 @@ export function HomeHeroSlider({ slides, intervalMs = DEFAULT_INTERVAL_MS }: Hom
         return (
           <div
             key={key}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-out ${
+            className={`absolute inset-0 transition-opacity duration-700 ease-out ${
               isActive ? "opacity-100" : "opacity-0"
             }`}
             aria-hidden={!isActive}
@@ -83,8 +89,9 @@ export function HomeHeroSlider({ slides, intervalMs = DEFAULT_INTERVAL_MS }: Hom
               src={slide.src}
               alt={slide.alt}
               fill
-              priority={i === 0}
+              priority
               sizes="100vw"
+              quality={85}
               className="object-cover"
               style={{ objectPosition: slide.objectPosition ?? "center 30%" }}
               placeholder={canBlur ? "blur" : "empty"}
