@@ -223,6 +223,27 @@ export const nav = [
  */
 export const landingMedia = {
   hero: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=2400&q=85&auto=format&fit=crop",
+  /**
+   * Founder-led hero on `/`. Local assets in `public/founder/` so they ship with the build
+   * (no remotePatterns / OG proxy needed). The portrait is the focal image; studio + atelier
+   * are supporting shots.
+   */
+  founder: {
+    name: "Lizzy",
+    role: "Founder & creative director",
+    portrait: {
+      src: "/founder/lizzy-portrait.jpg",
+      alt: "Lizzy, founder of Lizzy Fusion, beside a red embellished gown on a dress form",
+    },
+    studio: {
+      src: "/founder/lizzy-studio.jpg",
+      alt: "Lizzy seated in the atelier with a red gown on a dress form",
+    },
+    atelier: {
+      src: "/founder/lizzy-atelier.jpg",
+      alt: "Lizzy at the cutting table with thread spools and a beaded red gown",
+    },
+  },
   sustainability:
     "https://images.unsplash.com/photo-1585123334904-845d60e97b29?w=2000&q=80&auto=format&fit=crop",
   collectionTiles: [
