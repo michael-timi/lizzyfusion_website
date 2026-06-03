@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { HomeHeroSlider } from "@/components/home/home-hero-slider";
+import { HomePromotionsView } from "@/components/home/home-promotions-view";
+import type { PromotionParams } from "@/lib/analytics-events";
 import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import { getMergedCatalog } from "@/lib/catalog";
-import { resolveTileProduct } from "@/lib/site-featured";
+import { resolveTileMediaList } from "@/lib/site-featured";
 import { getSiteFeatured } from "@/lib/site-featured-server";
 import { landingMedia, site, whatsappHref } from "@/lib/site";
 
@@ -18,14 +20,30 @@ export default async function HomePage() {
   const [catalog, featured] = await Promise.all([getMergedCatalog(), getSiteFeatured()]);
   const bestSellers = catalog.slice(0, HOME_BEST_SELLERS_LIMIT);
 
-  const tilesWithHref = landingMedia.collectionTiles.map((tile) => ({
-    tile,
-    href: resolveTileProduct(featured, catalog, tile).href,
-  }));
-  const [tile0, tile1, tile2, tile3] = tilesWithHref;
+  const tilesWithMedia = resolveTileMediaList(featured, catalog, landingMedia.collectionTiles).map((media, index) => {
+    const tile = landingMedia.collectionTiles[index];
+    return {
+      label: tile.label,
+      href: media.href,
+      image: media.image,
+      alt: media.alt,
+    };
+  });
+  const [tile0, tile1, tile2, tile3] = tilesWithMedia;
+
+  const HOME_TILE_CREATIVE = "home_collection_bento";
+  const promotions: PromotionParams[] = [
+    { promotionId: "home_hero", promotionName: "Home hero — Shop collections", creativeSlot: "home_hero" },
+    ...tilesWithMedia.map((t, i) => ({
+      promotionId: `home_tile_${i}`,
+      promotionName: t.label,
+      creativeSlot: HOME_TILE_CREATIVE,
+    })),
+  ];
 
   return (
     <div className="bg-white">
+      <HomePromotionsView promotions={promotions} />
       {/* Hero — full-bleed founder slider with the original serif overlay. */}
       <section className="relative min-h-[min(88vh,40rem)] w-full overflow-hidden">
         <HomeHeroSlider
@@ -48,7 +66,13 @@ export default async function HomePage() {
             times.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/shop" className="btn-sharp">
+            <Link
+              href="/shop"
+              className="btn-sharp"
+              data-lf-promo-id="home_hero"
+              data-lf-promo-name="Home hero — Shop collections"
+              data-lf-promo-creative="home_hero"
+            >
               Shop collections
             </Link>
             <a
@@ -115,10 +139,10 @@ export default async function HomePage() {
           Collection
         </h2>
         <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-3 lg:gap-4 lg:min-h-[560px]">
-          <CollectionTile {...tile0} className="min-h-[240px] sm:min-h-[280px] lg:col-span-2 lg:row-span-2 lg:min-h-0" />
-          <CollectionTile {...tile1} className="min-h-[220px] lg:col-span-1 lg:row-span-2 lg:col-start-3 lg:min-h-0" />
-          <CollectionTile {...tile2} className="min-h-[200px] lg:col-span-1 lg:row-start-3 lg:min-h-0" />
-          <CollectionTile {...tile3} className="min-h-[200px] lg:col-span-2 lg:row-start-3 lg:col-start-2 lg:min-h-0" />
+          <CollectionTile {...tile0} promotionId="home_tile_0" className="min-h-[240px] sm:min-h-[280px] lg:col-span-2 lg:row-span-2 lg:min-h-0" />
+          <CollectionTile {...tile1} promotionId="home_tile_1" className="min-h-[220px] lg:col-span-1 lg:row-span-2 lg:col-start-3 lg:min-h-0" />
+          <CollectionTile {...tile2} promotionId="home_tile_2" className="min-h-[200px] lg:col-span-1 lg:row-start-3 lg:min-h-0" />
+          <CollectionTile {...tile3} promotionId="home_tile_3" className="min-h-[200px] lg:col-span-2 lg:row-start-3 lg:col-start-2 lg:min-h-0" />
         </div>
       </section>
 
@@ -248,29 +272,42 @@ export default async function HomePage() {
 }
 
 function CollectionTile({
-  tile,
+  label,
   href,
+  image,
+  alt,
   className,
+  promotionId,
 }: {
-  tile: (typeof landingMedia.collectionTiles)[number];
+  label: string;
   href: string;
+  image: string;
+  alt: string;
   className?: string;
+  promotionId?: string;
 }) {
   return (
     <Link
       href={href}
       className={`group/ct relative block min-h-[200px] overflow-hidden bg-zinc-100 ${className ?? ""}`}
+      {...(promotionId
+        ? {
+            "data-lf-promo-id": promotionId,
+            "data-lf-promo-name": label,
+            "data-lf-promo-creative": "home_collection_bento",
+          }
+        : {})}
     >
       <LfRemoteImage
-        src={tile.image}
-        alt={tile.label}
+        src={image}
+        alt={alt}
         fill
         className="object-cover transition duration-500 group-hover/ct:scale-105"
         sizes="(max-width: 768px) 50vw, 33vw"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-80 transition group-hover/ct:opacity-90" />
       <span className="absolute bottom-4 left-4 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--lf-ink)]">
-        {tile.label}
+        {label}
       </span>
     </Link>
   );

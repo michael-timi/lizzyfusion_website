@@ -7,7 +7,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { deleteDoc, doc, getDoc, setDoc } from "firebase/firestore";
 import type { CatalogProduct } from "@/lib/catalog";
-import { AdminCatalogGalleryFields, mergeGalleryUrls } from "@/components/admin/admin-catalog-gallery-fields";
+import {
+  AdminCatalogGalleryFields,
+  mergeGalleryUrls,
+} from "@/components/admin/admin-catalog-gallery-fields";
 import {
   AdminStyleVariantsFields,
   styleDraftsFromSuggestVariants,
@@ -15,14 +18,25 @@ import {
   type StyleVariantDraft,
 } from "@/components/admin/admin-style-variants-fields";
 import type { CatalogSuggestFromHero } from "@/lib/gemini-catalog-suggest-from-hero";
-import { buildStyleVariantsForSave, catalogDocForFirestore, uploadGalleryFiles } from "@/lib/admin-catalog-save-helpers";
+import {
+  buildStyleVariantsForSave,
+  catalogDocForFirestore,
+  uploadGalleryFiles,
+  validateCatalogImageUrlForFirestoreRules,
+  validateCatalogPriceForFirestoreRules,
+  validateCatalogSlugForFirestoreRules,
+  validateCatalogTextForFirestoreRules,
+} from "@/lib/admin-catalog-save-helpers";
 import { uploadCatalogProductHeroImage } from "@/lib/catalog-product-image-upload";
 import {
   AdminGalleryStyleLinks,
   galleryStyleLinksToRecord,
   resolveGalleryStyleLinksForSave,
 } from "@/components/admin/admin-gallery-style-links";
-import { type CatalogStyleVariant, withListingPriceFromVariants } from "@/lib/catalog-style-variants";
+import {
+  type CatalogStyleVariant,
+  withListingPriceFromVariants,
+} from "@/lib/catalog-style-variants";
 import { AdminFormBusyOverlay } from "@/components/admin/admin-form-busy-overlay";
 import { AdminFormErrorBanner } from "@/components/admin/admin-form-error-banner";
 import { adminFormFeedbackPadding } from "@/components/admin/admin-form-feedback";
@@ -44,7 +58,9 @@ export function AdminEditProductView({ catalogSlug }: Props) {
   const storage = useMemo(() => getFirebaseStorage(), []);
   const { user, isAdmin, profileLoading } = useFirebaseAuth();
 
-  const [loadState, setLoadState] = useState<"loading" | "missing" | "ready">("loading");
+  const [loadState, setLoadState] = useState<"loading" | "missing" | "ready">(
+    "loading",
+  );
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
   const [priceStr, setPriceStr] = useState("");
@@ -64,7 +80,9 @@ export function AdminEditProductView({ catalogSlug }: Props) {
   const [styleDrafts, setStyleDrafts] = useState<StyleVariantDraft[]>(() =>
     styleVariantsFromFirestore(undefined),
   );
-  const [galleryStyleLinksByUrl, setGalleryStyleLinksByUrl] = useState<Record<string, string[]>>({});
+  const [galleryStyleLinksByUrl, setGalleryStyleLinksByUrl] = useState<
+    Record<string, string[]>
+  >({});
   const [fittingNotes, setFittingNotes] = useState("");
   const [fabricCareNotes, setFabricCareNotes] = useState("");
   const [shippingNotes, setShippingNotes] = useState("");
@@ -119,7 +137,14 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       }
     }
     return urls.slice(0, 6);
-  }, [imageMode, filePreviewUrl, image, galleryControlled, existingGalleryUrls, galleryUrlLines]);
+  }, [
+    imageMode,
+    filePreviewUrl,
+    image,
+    galleryControlled,
+    existingGalleryUrls,
+    galleryUrlLines,
+  ]);
 
   const applySuggestions = useCallback((s: CatalogSuggestFromHero) => {
     setName(s.name);
@@ -142,7 +167,8 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       setCompareAtStr("");
     } else if (!stylesEnabledRef.current) {
       setStylesEnabled(false);
-      const listingPrice = variants?.length === 1 ? variants[0]!.priceNgn : s.priceNgn;
+      const listingPrice =
+        variants?.length === 1 ? variants[0]!.priceNgn : s.priceNgn;
       setPriceStr(String(listingPrice));
       setCompareAtStr("");
     }
@@ -150,9 +176,15 @@ export function AdminEditProductView({ catalogSlug }: Props) {
     const heroKey = filePreviewUrlRef.current;
     const visible = s.stylesVisibleInHero;
     if (heroKey && visible?.length) {
-      setGalleryStyleLinksByUrl((prev) => ({ ...prev, [heroKey]: [...visible] }));
+      setGalleryStyleLinksByUrl((prev) => ({
+        ...prev,
+        [heroKey]: [...visible],
+      }));
     } else if (heroKey && variants?.length === 1) {
-      setGalleryStyleLinksByUrl((prev) => ({ ...prev, [heroKey]: [variants[0]!.id] }));
+      setGalleryStyleLinksByUrl((prev) => ({
+        ...prev,
+        [heroKey]: [variants[0]!.id],
+      }));
     }
   }, []);
 
@@ -191,7 +223,9 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       } catch (e) {
         if (e instanceof Error && e.name === "AbortError") return;
         if (epoch !== heroSuggestEpochRef.current) return;
-        setError(e instanceof Error ? e.message : "Could not fetch suggestions.");
+        setError(
+          e instanceof Error ? e.message : "Could not fetch suggestions.",
+        );
       } finally {
         if (epoch === heroSuggestEpochRef.current) {
           setSuggestBusy(false);
@@ -248,37 +282,66 @@ export function AdminEditProductView({ catalogSlug }: Props) {
         if (cancelled) return;
         setName(typeof data.name === "string" ? data.name : "");
         setTag(typeof data.tag === "string" ? data.tag : "");
-        setPriceStr(typeof data.price === "number" && Number.isFinite(data.price) ? String(data.price) : "");
+        setPriceStr(
+          typeof data.price === "number" && Number.isFinite(data.price)
+            ? String(data.price)
+            : "",
+        );
         setCompareAtStr(
-          typeof data.compareAtPrice === "number" && Number.isFinite(data.compareAtPrice)
+          typeof data.compareAtPrice === "number" &&
+            Number.isFinite(data.compareAtPrice)
             ? String(Math.round(data.compareAtPrice))
             : "",
         );
         setLead(typeof data.lead === "string" ? data.lead : "");
-        setDescription(typeof data.description === "string" ? data.description : "");
+        setDescription(
+          typeof data.description === "string" ? data.description : "",
+        );
         setImage(typeof data.image === "string" ? data.image : "");
         setImageMode("url");
         setImageFile(null);
 
-        const hasGalleryKey = "galleryImageUrls" in data && data.galleryImageUrls !== undefined;
+        const hasGalleryKey =
+          "galleryImageUrls" in data && data.galleryImageUrls !== undefined;
         setGalleryControlled(hasGalleryKey);
         setExistingGalleryUrls(
-          Array.isArray(data.galleryImageUrls) ? data.galleryImageUrls.filter((u) => typeof u === "string") : [],
+          Array.isArray(data.galleryImageUrls)
+            ? data.galleryImageUrls.filter((u) => typeof u === "string")
+            : [],
         );
         setNewGalleryFiles([]);
         setGalleryUrlLines("");
-        const hasStyles = Array.isArray(data.styleVariants) && data.styleVariants.length > 0;
+        const hasStyles =
+          Array.isArray(data.styleVariants) && data.styleVariants.length > 0;
         setStylesEnabled(hasStyles);
         setStyleDrafts(styleVariantsFromFirestore(data.styleVariants));
-        setGalleryStyleLinksByUrl(galleryStyleLinksToRecord(data.galleryStyleLinks));
-        setFittingNotes(typeof data.fittingNotes === "string" ? data.fittingNotes : "");
-        setFabricCareNotes(typeof data.fabricCareNotes === "string" ? data.fabricCareNotes : "");
-        setShippingNotes(typeof data.shippingNotes === "string" ? data.shippingNotes : "");
-        setCraftFabricNotes(typeof data.craftFabricNotes === "string" ? data.craftFabricNotes : "");
-        setColourAvailabilityNotes(typeof data.colourAvailabilityNotes === "string" ? data.colourAvailabilityNotes : "");
+        setGalleryStyleLinksByUrl(
+          galleryStyleLinksToRecord(data.galleryStyleLinks),
+        );
+        setFittingNotes(
+          typeof data.fittingNotes === "string" ? data.fittingNotes : "",
+        );
+        setFabricCareNotes(
+          typeof data.fabricCareNotes === "string" ? data.fabricCareNotes : "",
+        );
+        setShippingNotes(
+          typeof data.shippingNotes === "string" ? data.shippingNotes : "",
+        );
+        setCraftFabricNotes(
+          typeof data.craftFabricNotes === "string"
+            ? data.craftFabricNotes
+            : "",
+        );
+        setColourAvailabilityNotes(
+          typeof data.colourAvailabilityNotes === "string"
+            ? data.colourAvailabilityNotes
+            : "",
+        );
         setCraftFabricLabelsInput(
           Array.isArray(data.craftFabricLabels)
-            ? data.craftFabricLabels.filter((x) => typeof x === "string").join(", ")
+            ? data.craftFabricLabels
+                .filter((x) => typeof x === "string")
+                .join(", ")
             : "",
         );
 
@@ -299,7 +362,15 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       return;
     }
     if (!user || !isAdmin || profileLoading) {
-      setError("You must be signed in as an admin to update catalogue products.");
+      setError(
+        "You must be signed in as an admin to update catalogue products.",
+      );
+      return;
+    }
+
+    const slugRuleError = validateCatalogSlugForFirestoreRules(catalogSlug);
+    if (slugRuleError) {
+      setError(slugRuleError);
       return;
     }
 
@@ -307,7 +378,9 @@ export function AdminEditProductView({ catalogSlug }: Props) {
     let compareAtPrice: number | undefined;
     if (!stylesEnabled) {
       if (!Number.isFinite(price) || price < 0) {
-        setError("Price must be a non-negative number (stored as whole Naira).");
+        setError(
+          "Price must be a non-negative number (stored as whole Naira).",
+        );
         return;
       }
       const compareRaw = compareAtStr.trim().replace(/,/g, "");
@@ -321,10 +394,20 @@ export function AdminEditProductView({ catalogSlug }: Props) {
         }
         compareAtPrice = cap;
       }
+      const priceRuleError = validateCatalogPriceForFirestoreRules(
+        price,
+        compareAtPrice,
+      );
+      if (priceRuleError) {
+        setError(priceRuleError);
+        return;
+      }
     }
 
     if (!name.trim() || !tag.trim() || !lead.trim() || !description.trim()) {
-      setError("Name, collection tag, lead time, and description are required.");
+      setError(
+        "Name, collection tag, lead time, and description are required.",
+      );
       return;
     }
 
@@ -332,48 +415,61 @@ export function AdminEditProductView({ catalogSlug }: Props) {
     const tagT = tag.trim();
     const leadT = lead.trim();
     const descriptionT = description.trim();
-    if (nameT.length >= 200) {
-      setError("Product name must be under 200 characters (Firestore catalogue limit).");
-      return;
-    }
-    if (tagT.length >= 120) {
-      setError("Collection tag must be under 120 characters.");
-      return;
-    }
-    if (leadT.length > 4000) {
-      setError("Lead time / fulfilment copy must be at most 4,000 characters.");
-      return;
-    }
-    if (descriptionT.length > 20_000) {
-      setError("Description must be at most 20,000 characters.");
+    const textRuleError = validateCatalogTextForFirestoreRules({
+      name: nameT,
+      tag: tagT,
+      lead: leadT,
+      description: descriptionT,
+      fittingNotes,
+      fabricCareNotes,
+      shippingNotes,
+      craftFabricNotes,
+      colourAvailabilityNotes,
+    });
+    if (textRuleError) {
+      setError(textRuleError);
       return;
     }
 
     let img = image.trim();
-    const heroPreviewForRemap = imageMode === "file" && filePreviewUrl ? filePreviewUrl : null;
+    const heroPreviewForRemap =
+      imageMode === "file" && filePreviewUrl ? filePreviewUrl : null;
     const previousHeroUrl = image.trim();
     setBusy(true);
     setSaveMessage(null);
     try {
       if (imageMode === "file" && imageFile && storage) {
         setSaveMessage("Uploading hero image…");
-        const { downloadUrl } = await uploadCatalogProductHeroImage(storage, user.uid, catalogSlug, imageFile);
+        const { downloadUrl } = await uploadCatalogProductHeroImage(
+          storage,
+          user.uid,
+          catalogSlug,
+          imageFile,
+        );
         img = downloadUrl;
       }
 
-      if (!img.startsWith("https://")) {
-        setError("Image must be an https URL (paste a link or upload a file).");
+      const imageRuleError = validateCatalogImageUrlForFirestoreRules("Image", img);
+      if (imageRuleError) {
+        setError(`${imageRuleError} Paste a link or upload a file.`);
         return;
       }
 
       let styleVariants: CatalogStyleVariant[] | undefined;
       if (stylesEnabled) {
         if (!storage) {
-          setError("Firebase Storage is required to save dress styles with photos.");
+          setError(
+            "Firebase Storage is required to save dress styles with photos.",
+          );
           return;
         }
         setSaveMessage("Uploading style photos…");
-        styleVariants = await buildStyleVariantsForSave(styleDrafts, storage, user.uid, catalogSlug);
+        styleVariants = await buildStyleVariantsForSave(
+          styleDrafts,
+          storage,
+          user.uid,
+          catalogSlug,
+        );
         price = Math.min(...styleVariants.map((v) => v.price));
         compareAtPrice = undefined;
       }
@@ -408,7 +504,11 @@ export function AdminEditProductView({ catalogSlug }: Props) {
           6,
           existingGalleryUrls.length,
         );
-        const merged = mergeGalleryUrls(existingGalleryUrls, uploaded, galleryUrlLines);
+        const merged = mergeGalleryUrls(
+          existingGalleryUrls,
+          uploaded,
+          galleryUrlLines,
+        );
         next.galleryImageUrls = merged ?? [];
         setExistingGalleryUrls(merged ?? []);
         setNewGalleryFiles([]);
@@ -423,7 +523,9 @@ export function AdminEditProductView({ catalogSlug }: Props) {
 
       const styleLinks = stylesEnabled
         ? resolveGalleryStyleLinksForSave(galleryStyleLinksByUrl, [
-            ...(heroPreviewForRemap ? [{ from: heroPreviewForRemap, to: img }] : []),
+            ...(heroPreviewForRemap
+              ? [{ from: heroPreviewForRemap, to: img }]
+              : []),
           ])
         : undefined;
       if (styleLinks?.length) next.galleryStyleLinks = styleLinks;
@@ -459,7 +561,10 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       setImage(img);
       setImageFile(null);
       setImageMode("url");
-      if (heroPreviewForRemap || (previousHeroUrl.startsWith("https://") && previousHeroUrl !== img)) {
+      if (
+        heroPreviewForRemap ||
+        (previousHeroUrl.startsWith("https://") && previousHeroUrl !== img)
+      ) {
         setGalleryStyleLinksByUrl((prev) => {
           const next = { ...prev };
           if (heroPreviewForRemap) {
@@ -467,7 +572,10 @@ export function AdminEditProductView({ catalogSlug }: Props) {
             delete next[heroPreviewForRemap];
             if (ids?.length) next[img] = ids;
           }
-          if (previousHeroUrl.startsWith("https://") && previousHeroUrl !== img) {
+          if (
+            previousHeroUrl.startsWith("https://") &&
+            previousHeroUrl !== img
+          ) {
             delete next[previousHeroUrl];
           }
           return next;
@@ -502,7 +610,8 @@ export function AdminEditProductView({ catalogSlug }: Props) {
       router.push("/admin/catalog");
       router.refresh();
     } catch (err) {
-      let msg = err instanceof Error ? err.message : "Could not delete product.";
+      let msg =
+        err instanceof Error ? err.message : "Could not delete product.";
       if (err instanceof FirebaseError && err.code === "permission-denied") {
         msg = `Firestore rejected delete (permission denied). Ensure users/${user?.uid ?? "YOUR_UID"} has userType exactly admin (lowercase) and deploy firestore.rules.`;
       }
@@ -512,28 +621,47 @@ export function AdminEditProductView({ catalogSlug }: Props) {
     }
   }
 
-  const canUseFileUpload = Boolean(user && isAdmin && !profileLoading && storage);
+  const canUseFileUpload = Boolean(
+    user && isAdmin && !profileLoading && storage,
+  );
 
   if (loadState === "loading") {
     return (
-      <div className="mx-auto max-w-2xl py-12 text-center text-sm text-[var(--lf-muted)]">Loading product…</div>
+      <div className="mx-auto max-w-2xl py-12 text-center text-sm text-[var(--lf-muted)]">
+        Loading product…
+      </div>
     );
   }
 
   if (loadState === "missing") {
     return (
       <div className="mx-auto max-w-2xl space-y-6">
-        <h2 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">No Firestore product</h2>
+        <h2 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">
+          No Firestore product
+        </h2>
         <p className="text-sm text-[var(--lf-muted)]">
-          There is no document at <code className="rounded bg-zinc-100 px-1 text-xs">catalog_products/{catalogSlug}</code>
-          . Code-only pieces are edited in <code className="rounded bg-zinc-100 px-1 text-xs">src/lib/site.ts</code>. To
-          add a new Firestore row (including an override for an existing code slug), use{" "}
-          <Link href="/admin/catalog/add" className="font-semibold text-[var(--lf-purple)] hover:underline">
+          There is no document at{" "}
+          <code className="rounded bg-zinc-100 px-1 text-xs">
+            catalog_products/{catalogSlug}
+          </code>
+          . Code-only pieces are edited in{" "}
+          <code className="rounded bg-zinc-100 px-1 text-xs">
+            src/lib/site.ts
+          </code>
+          . To add a new Firestore row (including an override for an existing
+          code slug), use{" "}
+          <Link
+            href="/admin/catalog/add"
+            className="font-semibold text-[var(--lf-purple)] hover:underline"
+          >
             Add product
           </Link>
           .
         </p>
-        <Link href="/admin/catalog" className="text-sm font-semibold text-[var(--lf-purple)] hover:underline">
+        <Link
+          href="/admin/catalog"
+          className="text-sm font-semibold text-[var(--lf-purple)] hover:underline"
+        >
           ← Catalogue list
         </Link>
       </div>
@@ -541,22 +669,35 @@ export function AdminEditProductView({ catalogSlug }: Props) {
   }
 
   return (
-    <div className={`mx-auto max-w-2xl space-y-8 ${adminFormFeedbackPadding(Boolean(error || savedAt))}`}>
+    <div
+      className={`mx-auto max-w-2xl space-y-8 ${adminFormFeedbackPadding(Boolean(error || savedAt))}`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">Edit catalogue product</h2>
-          <p className="mt-1 font-mono text-xs text-[var(--lf-muted)]">catalog_products/{catalogSlug}</p>
+          <h2 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">
+            Edit catalogue product
+          </h2>
+          <p className="mt-1 font-mono text-xs text-[var(--lf-muted)]">
+            catalog_products/{catalogSlug}
+          </p>
           <p className="mt-2 text-sm text-[var(--lf-muted)]">
-            Update core fields, hero image, gallery URLs, and PDP copy. Uploading a new hero file triggers Gemini
-            suggestions for copy, dress styles, and gallery style tags (review before saving). Saving merges with the
-            existing Firestore document.
+            Update core fields, hero image, gallery URLs, and PDP copy.
+            Uploading a new hero file triggers Gemini suggestions for copy,
+            dress styles, and gallery style tags (review before saving). Saving
+            merges with the existing Firestore document.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Link href="/admin/catalog" className="text-sm font-semibold text-[var(--lf-purple)] hover:underline">
+          <Link
+            href="/admin/catalog"
+            className="text-sm font-semibold text-[var(--lf-purple)] hover:underline"
+          >
             ← Catalogue list
           </Link>
-          <Link href={`/shop/${catalogSlug}`} className="text-sm font-semibold text-zinc-500 hover:text-[var(--lf-ink)]">
+          <Link
+            href={`/shop/${catalogSlug}`}
+            className="text-sm font-semibold text-zinc-500 hover:text-[var(--lf-ink)]"
+          >
             View PDP →
           </Link>
         </div>
@@ -572,30 +713,53 @@ export function AdminEditProductView({ catalogSlug }: Props) {
           message={saveMessage ?? "Please keep this tab open…"}
         />
         <div>
-          <span className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">Slug (read-only)</span>
+          <span className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
+            Slug (read-only)
+          </span>
           <p className="mt-1.5 rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 font-mono text-sm text-[var(--lf-ink)]">
             {catalogSlug}
           </p>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ep-name">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="ep-name"
+          >
             Name
           </label>
-          <input id="ep-name" className={`${inputClass} mt-1.5`} value={name} onChange={(e) => setName(e.target.value)} required />
+          <input
+            id="ep-name"
+            className={`${inputClass} mt-1.5`}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ep-tag">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="ep-tag"
+          >
             Collection / tag
           </label>
-          <input id="ep-tag" className={`${inputClass} mt-1.5`} value={tag} onChange={(e) => setTag(e.target.value)} required />
+          <input
+            id="ep-tag"
+            className={`${inputClass} mt-1.5`}
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+            required
+          />
         </div>
 
         {!stylesEnabled ? (
           <>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ep-price">
+              <label
+                className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+                htmlFor="ep-price"
+              >
                 Price (₦, whole number)
               </label>
               <input
@@ -623,14 +787,16 @@ export function AdminEditProductView({ catalogSlug }: Props) {
                 placeholder="Leave blank when not on sale"
               />
               <p className="mt-1 text-xs text-[var(--lf-muted)]">
-                Must be strictly greater than the price above, or leave blank to clear a promo.
+                Must be strictly greater than the price above, or leave blank to
+                clear a promo.
               </p>
             </div>
           </>
         ) : (
           <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-[var(--lf-muted)]">
-            Listing price on the shop is set automatically to the <strong className="font-medium text-[var(--lf-ink)]">lowest</strong> style
-            price below.
+            Listing price on the shop is set automatically to the{" "}
+            <strong className="font-medium text-[var(--lf-ink)]">lowest</strong>{" "}
+            style price below.
           </p>
         )}
 
@@ -643,14 +809,26 @@ export function AdminEditProductView({ catalogSlug }: Props) {
         />
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ep-lead">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="ep-lead"
+          >
             Lead time / fulfilment note
           </label>
-          <textarea id="ep-lead" className={`${inputClass} mt-1.5 min-h-[88px] resize-y`} value={lead} onChange={(e) => setLead(e.target.value)} required />
+          <textarea
+            id="ep-lead"
+            className={`${inputClass} mt-1.5 min-h-[88px] resize-y`}
+            value={lead}
+            onChange={(e) => setLead(e.target.value)}
+            required
+          />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ep-desc">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="ep-desc"
+          >
             Description
           </label>
           <textarea
@@ -692,7 +870,10 @@ export function AdminEditProductView({ catalogSlug }: Props) {
           ) : null}
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-colour-notes">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ep-colour-notes"
+            >
               Colours / fabric availability (optional)
             </label>
             <textarea
@@ -704,7 +885,10 @@ export function AdminEditProductView({ catalogSlug }: Props) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-fitting">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ep-fitting"
+            >
               Fitting section (optional)
             </label>
             <textarea
@@ -716,7 +900,10 @@ export function AdminEditProductView({ catalogSlug }: Props) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-fabric">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ep-fabric"
+            >
               Fabric & care (optional)
             </label>
             <textarea
@@ -728,7 +915,10 @@ export function AdminEditProductView({ catalogSlug }: Props) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-shipping">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ep-shipping"
+            >
               Shipping & returns (optional)
             </label>
             <textarea
@@ -740,7 +930,10 @@ export function AdminEditProductView({ catalogSlug }: Props) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-craft-body">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ep-craft-body"
+            >
               Craft & fabric — main paragraph (optional)
             </label>
             <textarea
@@ -752,7 +945,10 @@ export function AdminEditProductView({ catalogSlug }: Props) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ep-craft-labels">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ep-craft-labels"
+            >
               Craft & fabric — chip labels (optional)
             </label>
             <textarea
@@ -766,10 +962,16 @@ export function AdminEditProductView({ catalogSlug }: Props) {
         </fieldset>
 
         <fieldset className="space-y-3">
-          <legend className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">Product image</legend>
+          <legend className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
+            Product image
+          </legend>
           <p className="text-xs leading-relaxed text-[var(--lf-muted)]">
-            Under <strong className="font-medium text-[var(--lf-ink)]">Upload new file</strong>, choosing a replacement hero
-            drafts copy, dress styles, and gallery style tags from the photo (review before saving).
+            Under{" "}
+            <strong className="font-medium text-[var(--lf-ink)]">
+              Upload new file
+            </strong>
+            , choosing a replacement hero drafts copy, dress styles, and gallery
+            style tags from the photo (review before saving).
           </p>
           <div className="mt-1.5 flex flex-wrap gap-4 text-sm text-[var(--lf-ink)]">
             <label className="inline-flex cursor-pointer items-center gap-2">
@@ -820,7 +1022,9 @@ export function AdminEditProductView({ catalogSlug }: Props) {
                 </p>
               ) : (
                 <>
-                  <p className="text-xs text-[var(--lf-muted)]">Leave file empty to keep the current image URL on save.</p>
+                  <p className="text-xs text-[var(--lf-muted)]">
+                    Leave file empty to keep the current image URL on save.
+                  </p>
                   <div className="flex flex-wrap items-center gap-3">
                     <label className="inline-flex cursor-pointer rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-[var(--lf-ink)] transition hover:border-[var(--lf-purple)] hover:bg-white">
                       <input
@@ -837,7 +1041,9 @@ export function AdminEditProductView({ catalogSlug }: Props) {
                             return;
                           }
                           if (!f.type.startsWith("image/")) {
-                            setError("Hero must be an image file (JPEG, PNG, WebP, or GIF).");
+                            setError(
+                              "Hero must be an image file (JPEG, PNG, WebP, or GIF).",
+                            );
                             e.target.value = "";
                             return;
                           }
@@ -864,7 +1070,11 @@ export function AdminEditProductView({ catalogSlug }: Props) {
                           lastSuggestedHeroKeyRef.current = null;
                           heroSuggestEpochRef.current += 1;
                           setSuggestAppliedAt(null);
-                          void suggestFromHero(imageFile, undefined, heroSuggestEpochRef.current);
+                          void suggestFromHero(
+                            imageFile,
+                            undefined,
+                            heroSuggestEpochRef.current,
+                          );
                         }}
                         className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-[var(--lf-ink)] transition hover:border-[var(--lf-purple)] disabled:cursor-not-allowed disabled:opacity-50"
                       >
@@ -897,14 +1107,19 @@ export function AdminEditProductView({ catalogSlug }: Props) {
                         aria-hidden="true"
                       />
                       <div className="min-w-0 flex-1 text-sm leading-snug text-[var(--lf-ink)]">
-                        <p className="font-semibold">Drafting updates from your new hero…</p>
+                        <p className="font-semibold">
+                          Drafting updates from your new hero…
+                        </p>
                         <p className="mt-0.5 text-xs text-[var(--lf-muted)]">
-                          Gemini is refreshing copy, dress styles, and gallery tags. This usually takes 10–20 seconds.
+                          Gemini is refreshing copy, dress styles, and gallery
+                          tags. This usually takes 10–20 seconds.
                         </p>
                       </div>
                     </div>
                   ) : null}
-                  {!suggestBusy && suggestAppliedAt !== null && imageMode === "file" ? (
+                  {!suggestBusy &&
+                  suggestAppliedAt !== null &&
+                  imageMode === "file" ? (
                     <div
                       className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3"
                       role="status"
@@ -917,10 +1132,14 @@ export function AdminEditProductView({ catalogSlug }: Props) {
                         ✓
                       </span>
                       <div className="min-w-0 flex-1 text-sm leading-snug text-emerald-900">
-                        <p className="font-semibold">Suggestions applied — review fields above before saving.</p>
+                        <p className="font-semibold">
+                          Suggestions applied — review fields above before
+                          saving.
+                        </p>
                         <p className="mt-0.5 text-xs text-emerald-800/90">
-                          Copy, dress styles, and photo style tags are editable. Existing multi-style rows are kept unless
-                          Gemini recommended new styles.
+                          Copy, dress styles, and photo style tags are editable.
+                          Existing multi-style rows are kept unless Gemini
+                          recommended new styles.
                         </p>
                       </div>
                     </div>
@@ -946,7 +1165,13 @@ export function AdminEditProductView({ catalogSlug }: Props) {
         <div className="flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-4">
           <button
             type="submit"
-            disabled={busy || deleteBusy || (imageMode === "file" && !imageFile && !image.trim().startsWith("https://"))}
+            disabled={
+              busy ||
+              deleteBusy ||
+              (imageMode === "file" &&
+                !imageFile &&
+                !image.trim().startsWith("https://"))
+            }
             className="rounded-full bg-[var(--lf-purple-deep)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple)] disabled:opacity-50"
           >
             {busy ? "Saving…" : "Save changes"}

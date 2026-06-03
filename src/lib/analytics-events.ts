@@ -65,56 +65,91 @@ export async function trackCheckoutFunnelView(pathname: string): Promise<void> {
   const step = checkoutFunnelStep(pathname);
   if (!step) return;
   switch (step) {
-    case "cart":
-      await trackBeginCheckoutFromPath(pathname);
+    case "cart": {
+      const cart = await readCartFunnelData();
+      if (!cart) {
+        await track("view_cart", { page_path: pathname });
+        return;
+      }
+      await track("begin_checkout", {
+        ...currencyValue(cart.value),
+        ...gaItems(cart.items),
+        item_count: cart.count,
+      });
       break;
-    case "info":
-      await track("begin_checkout", { checkout_step: "info" });
+    }
+    case "info": {
+      const cart = await readCartFunnelData();
+      await track("begin_checkout", { checkout_step: "info", ...cartParams(cart) });
       break;
-    case "shipping":
-      await track("add_shipping_info", { checkout_step: "shipping" });
+    }
+    case "shipping": {
+      const cart = await readCartFunnelData();
+      const tier = readCheckoutShippingTier();
+      await track("add_shipping_info", {
+        checkout_step: "shipping",
+        ...(tier ? { shipping_tier: tier } : {}),
+        ...cartParams(cart),
+      });
       break;
-    case "payment":
-      await track("add_payment_info", { checkout_step: "payment" });
+    }
+    case "payment": {
+      const cart = await readCartFunnelData();
+      await track("add_payment_info", {
+        checkout_step: "payment",
+        payment_type: "whatsapp",
+        ...cartParams(cart),
+      });
       break;
+    }
     case "success":
       await track("checkout_success_view", { checkout_step: "success", transaction_method: "whatsapp" });
       break;
     case "failure":
       await track("checkout_failure", { checkout_step: "failure" });
+      await trackException("checkout_failure", false);
       break;
     default:
       break;
   }
 }
 
-async function trackBeginCheckoutFromPath(pathname: string): Promise<void> {
-  if (typeof window === "undefined") return;
+type CartFunnelData = { items: AnalyticsItem[]; value: number; count: number };
+
+/** Current cart as GA item list + subtotal, or `null` when empty / unavailable. */
+async function readCartFunnelData(): Promise<CartFunnelData | null> {
+  if (typeof window === "undefined") return null;
   const { getCartLines } = await import("@/lib/cart");
   const { resolveCartLineDisplay } = await import("@/lib/site");
   const { checkoutTotals } = await import("@/lib/checkout-totals");
   const lines = getCartLines();
-  if (lines.length === 0) {
-    await track("view_cart", { page_path: pathname });
-    return;
-  }
+  if (lines.length === 0) return null;
   const items: AnalyticsItem[] = [];
   for (const line of lines) {
     const p = resolveCartLineDisplay(line);
     if (!p) continue;
-    items.push({
-      item_id: p.slug,
-      item_name: p.name,
-      price: p.price,
-      quantity: line.qty,
-    });
+    items.push({ item_id: p.slug, item_name: p.name, price: p.price, quantity: line.qty });
   }
   const totals = checkoutTotals(lines);
-  await track("begin_checkout", {
-    ...currencyValue(totals.subtotal),
-    ...gaItems(items),
-    item_count: totals.count,
-  });
+  return { items, value: totals.subtotal, count: totals.count };
+}
+
+function cartParams(cart: CartFunnelData | null): EventParams {
+  if (!cart) return {};
+  return { ...currencyValue(cart.value), ...gaItems(cart.items), item_count: cart.count };
+}
+
+/** Read the selected shipping method from the checkout form draft (sessionStorage, set by CheckoutProvider). */
+function readCheckoutShippingTier(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = sessionStorage.getItem("lizzy-fusion-checkout-v1");
+    if (!raw) return undefined;
+    const o = JSON.parse(raw) as { shippingMethod?: unknown };
+    return typeof o.shippingMethod === "string" ? o.shippingMethod : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // ——— E‑commerce ———
@@ -153,6 +188,16 @@ export async function trackViewItemList(
   });
 }
 
+/** Fires when a shopper clicks through from a product list / card to the PDP. */
+export async function trackSelectItem(item: AnalyticsItem, listId?: string): Promise<void> {
+  await track("select_item", {
+    ...(listId
+      ? { item_list_id: clampString(listId, 64), item_list_name: clampString(listId, 100) }
+      : {}),
+    ...gaItems([item]),
+  });
+}
+
 export async function trackSearch(searchTerm: string, resultCount: number): Promise<void> {
   await track("search", {
     search_term: clampString(searchTerm, 80),
@@ -161,12 +206,21 @@ export async function trackSearch(searchTerm: string, resultCount: number): Prom
 }
 
 export async function trackPurchase(params: {
+  /** Stable id so GA4 de-duplicates repeat fires (refresh / re-entry). */
+  transactionId: string;
   value: number;
+  tax?: number;
+  shipping?: number;
+  shippingTier?: string;
   items: AnalyticsItem[];
   itemCount: number;
 }): Promise<void> {
   await track("purchase", {
+    transaction_id: clampString(params.transactionId, 64),
     ...currencyValue(params.value),
+    ...(params.tax !== undefined ? { tax: params.tax } : {}),
+    ...(params.shipping !== undefined ? { shipping: params.shipping } : {}),
+    ...(params.shippingTier ? { shipping_tier: clampString(params.shippingTier, 48) } : {}),
     ...gaItems(params.items),
     item_count: params.itemCount,
     transaction_method: "whatsapp",
@@ -234,6 +288,41 @@ export async function trackSelectContent(contentType: string, contentId: string)
   });
 }
 
+// ——— Promotions (internal merchandising banners / tiles) ———
+
+export type PromotionParams = {
+  promotionId: string;
+  promotionName: string;
+  /** Where the promo is rendered (e.g. "home_hero", "home_collection_bento"). */
+  creativeSlot?: string;
+};
+
+function promotionParams(p: PromotionParams): EventParams {
+  return {
+    promotion_id: clampString(p.promotionId, 64),
+    promotion_name: clampString(p.promotionName, 100),
+    ...(p.creativeSlot ? { creative_slot: clampString(p.creativeSlot, 48) } : {}),
+  };
+}
+
+export async function trackViewPromotion(p: PromotionParams): Promise<void> {
+  await track("view_promotion", promotionParams(p));
+}
+
+export async function trackSelectPromotion(p: PromotionParams): Promise<void> {
+  await track("select_promotion", promotionParams(p));
+}
+
+// ——— Errors ———
+
+/** GA4 `exception` event. `description` is truncated to GA's 150-char limit. */
+export async function trackException(description: string, fatal = false): Promise<void> {
+  await track("exception", {
+    description: clampString(description, 150),
+    fatal,
+  });
+}
+
 export async function trackBlogEngagement(
   action: "like" | "comment" | "reply" | "edit" | "delete",
   postSlug: string,
@@ -292,5 +381,42 @@ export function handleOutboundLinkClick(pathname: string, anchor: HTMLAnchorElem
       subject = undefined;
     }
     void trackMailtoClick(location, subject ?? undefined);
+  }
+}
+
+/** Pathname portion of an anchor href (handles relative + absolute). */
+function anchorPathname(anchor: HTMLAnchorElement): string {
+  const raw = anchor.getAttribute("href") ?? "";
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      return new URL(raw).pathname;
+    } catch {
+      return "";
+    }
+  }
+  return raw.split(/[?#]/)[0] ?? "";
+}
+
+/**
+ * Document-level handler for internal navigations: fires `select_promotion` for tagged promo links
+ * (`data-lf-promo-id`) and `select_item` when a card links to a product detail page. Set up in
+ * FirebaseClientInit alongside `handleOutboundLinkClick`.
+ */
+export function handleInternalLinkClick(pathname: string, anchor: HTMLAnchorElement): void {
+  const promoId = anchor.getAttribute("data-lf-promo-id");
+  if (promoId) {
+    void trackSelectPromotion({
+      promotionId: promoId,
+      promotionName: anchor.getAttribute("data-lf-promo-name") ?? promoId,
+      creativeSlot: anchor.getAttribute("data-lf-promo-creative") ?? undefined,
+    });
+  }
+
+  const slug = productSlugFromPath(anchorPathname(anchor));
+  if (slug) {
+    const label = (anchor.getAttribute("aria-label") ?? "").replace(/^view\s+/i, "").trim();
+    const listId = anchor.getAttribute("data-lf-list") ?? classifyAnalyticsArea(pathname);
+    void trackSelectItem({ item_id: slug, item_name: label || slug }, listId);
   }
 }

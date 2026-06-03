@@ -70,6 +70,15 @@ export function buildOrderSnapshot(
   };
 }
 
+/**
+ * Stable transaction id derived from the snapshot so GA4 de-duplicates the `purchase` event if the
+ * success page is re-entered. Based on creation time + total (unique per placed order).
+ */
+export function transactionIdForSnapshot(snapshot: OrderSnapshotV1): string {
+  const ts = Date.parse(snapshot.createdAtIso);
+  return `wa_${Number.isFinite(ts) ? ts : 0}_${snapshot.totals.total}`;
+}
+
 export function persistOrderSnapshot(snapshot: OrderSnapshotV1) {
   if (typeof window === "undefined") return;
   try {

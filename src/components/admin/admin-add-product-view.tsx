@@ -30,7 +30,13 @@ import {
   type StyleVariantDraft,
 } from "@/components/admin/admin-style-variants-fields";
 import { AdminFormBusyOverlay } from "@/components/admin/admin-form-busy-overlay";
-import { buildStyleVariantsForSave, catalogDocForFirestore } from "@/lib/admin-catalog-save-helpers";
+import {
+  buildStyleVariantsForSave,
+  catalogDocForFirestore,
+  validateCatalogPriceForFirestoreRules,
+  validateCatalogSlugForFirestoreRules,
+  validateCatalogTextForFirestoreRules,
+} from "@/lib/admin-catalog-save-helpers";
 import {
   AdminGalleryStyleLinks,
   resolveGalleryStyleLinksForSave,
@@ -136,7 +142,8 @@ export function AdminAddProductView() {
   const [description, setDescription] = useState("");
 
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
-  const [galleryRestrictNoLookbook, setGalleryRestrictNoLookbook] = useState(true);
+  const [galleryRestrictNoLookbook, setGalleryRestrictNoLookbook] =
+    useState(true);
   const [fittingNotes, setFittingNotes] = useState("");
   const [fabricCareNotes, setFabricCareNotes] = useState("");
   const [shippingNotes, setShippingNotes] = useState("");
@@ -146,10 +153,13 @@ export function AdminAddProductView() {
 
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [sourcePreviewUrl, setSourcePreviewUrl] = useState<string | null>(null);
-  const [garmentAudience, setGarmentAudience] = useState<GarmentAudience>("unspecified");
+  const [garmentAudience, setGarmentAudience] =
+    useState<GarmentAudience>("unspecified");
   const [dressCategory, setDressCategory] = useState<DressCategory>("auto");
-  const [mannequinStyle, setMannequinStyle] = useState<MannequinStyle>("auto-varied");
-  const [positionStyle, setPositionStyle] = useState<PositionStyle>("auto-varied");
+  const [mannequinStyle, setMannequinStyle] =
+    useState<MannequinStyle>("auto-varied");
+  const [positionStyle, setPositionStyle] =
+    useState<PositionStyle>("auto-varied");
   const [background, setBackground] = useState<StudioBackground>("soft-grey");
   const [lighting, setLighting] = useState<StudioLighting>("softbox");
   const [cameraAngle, setCameraAngle] = useState<CameraAngle>("front");
@@ -172,7 +182,9 @@ export function AdminAddProductView() {
   const [styleDrafts, setStyleDrafts] = useState<StyleVariantDraft[]>(() =>
     styleVariantsFromFirestore(undefined),
   );
-  const [galleryStyleLinksByUrl, setGalleryStyleLinksByUrl] = useState<Record<string, string[]>>({});
+  const [galleryStyleLinksByUrl, setGalleryStyleLinksByUrl] = useState<
+    Record<string, string[]>
+  >({});
 
   useEffect(() => {
     if (!sourceFile) return;
@@ -269,7 +281,10 @@ export function AdminAddProductView() {
     const heroKey = heroPreviewUrlRef.current;
     const visible = s.stylesVisibleInHero;
     if (heroKey && visible?.length) {
-      setGalleryStyleLinksByUrl((prev) => ({ ...prev, [heroKey]: [...visible] }));
+      setGalleryStyleLinksByUrl((prev) => ({
+        ...prev,
+        [heroKey]: [...visible],
+      }));
     }
   }, []);
 
@@ -308,7 +323,9 @@ export function AdminAddProductView() {
       } catch (e) {
         if (e instanceof Error && e.name === "AbortError") return;
         if (epoch !== heroSuggestEpochRef.current) return;
-        setError(e instanceof Error ? e.message : "Could not fetch suggestions.");
+        setError(
+          e instanceof Error ? e.message : "Could not fetch suggestions.",
+        );
       } finally {
         if (epoch === heroSuggestEpochRef.current) {
           setSuggestBusy(false);
@@ -372,7 +389,11 @@ export function AdminAddProductView() {
         headers: { Authorization: `Bearer ${idToken}` },
         body: fd,
       });
-      const body = (await res.json().catch(() => ({}))) as { error?: string; imageBase64?: string; mimeType?: string };
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        imageBase64?: string;
+        mimeType?: string;
+      };
       if (!res.ok) {
         setError(body.error ?? `Generation failed (${res.status}).`);
         return;
@@ -381,13 +402,21 @@ export function AdminAddProductView() {
         setError("Server returned no image data.");
         return;
       }
-      const mime = body.mimeType?.startsWith("image/") ? body.mimeType : "image/png";
-      const hero = base64ToImageFile(body.imageBase64, mime, "catalog-hero.png");
+      const mime = body.mimeType?.startsWith("image/")
+        ? body.mimeType
+        : "image/png";
+      const hero = base64ToImageFile(
+        body.imageBase64,
+        mime,
+        "catalog-hero.png",
+      );
       lastSuggestedHeroKeyRef.current = null;
       heroSuggestEpochRef.current += 1;
       setHeroFile(hero);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Network error while generating.");
+      setError(
+        e instanceof Error ? e.message : "Network error while generating.",
+      );
     } finally {
       setGeminiBusy(false);
     }
@@ -412,13 +441,16 @@ export function AdminAddProductView() {
       return;
     }
     if (!user || !isAdmin || profileLoading) {
-      setError("You must be signed in as an admin to publish catalogue products.");
+      setError(
+        "You must be signed in as an admin to publish catalogue products.",
+      );
       return;
     }
 
     const s = slugify(slug || name);
-    if (!s || s.length < 2) {
-      setError("Enter a valid slug (letters, numbers, hyphens) or a product name to derive one.");
+    const slugRuleError = validateCatalogSlugForFirestoreRules(s);
+    if (slugRuleError) {
+      setError(slugRuleError);
       return;
     }
 
@@ -426,7 +458,9 @@ export function AdminAddProductView() {
     let compareAtPrice: number | undefined;
     if (!stylesEnabled) {
       if (!Number.isFinite(price) || price < 0) {
-        setError("Price must be a non-negative number (stored as whole Naira).");
+        setError(
+          "Price must be a non-negative number (stored as whole Naira).",
+        );
         return;
       }
       const compareRaw = compareAtStr.trim().replace(/,/g, "");
@@ -440,19 +474,33 @@ export function AdminAddProductView() {
         }
         compareAtPrice = cap;
       }
+      const priceRuleError = validateCatalogPriceForFirestoreRules(
+        price,
+        compareAtPrice,
+      );
+      if (priceRuleError) {
+        setError(priceRuleError);
+        return;
+      }
     }
 
     if (!name.trim() || !tag.trim() || !lead.trim() || !description.trim()) {
-      setError("Name, collection tag, lead time, and description are required.");
+      setError(
+        "Name, collection tag, lead time, and description are required.",
+      );
       return;
     }
 
     if (!storage) {
-      setError("Firebase Storage is not configured (check storageBucket in your web app config).");
+      setError(
+        "Firebase Storage is not configured (check storageBucket in your web app config).",
+      );
       return;
     }
     if (!heroFile) {
-      setError("Upload the Lizzy Fusion mannequin hero image at the top of the form.");
+      setError(
+        "Upload the Lizzy Fusion mannequin hero image at the top of the form.",
+      );
       return;
     }
 
@@ -460,20 +508,19 @@ export function AdminAddProductView() {
     const descriptionT = description.trim();
     const nameT = name.trim();
     const tagT = tag.trim();
-    if (nameT.length >= 200) {
-      setError("Product name must be under 200 characters (Firestore catalogue limit). Shorten the name and try again.");
-      return;
-    }
-    if (tagT.length >= 120) {
-      setError("Collection tag must be under 120 characters. Shorten the tag and try again.");
-      return;
-    }
-    if (leadT.length > 4000) {
-      setError("Lead time / fulfilment copy must be at most 4,000 characters. Shorten the lead field and try again.");
-      return;
-    }
-    if (descriptionT.length > 20_000) {
-      setError("Description must be at most 20,000 characters. Shorten the description and try again.");
+    const textRuleError = validateCatalogTextForFirestoreRules({
+      name: nameT,
+      tag: tagT,
+      lead: leadT,
+      description: descriptionT,
+      fittingNotes,
+      fabricCareNotes,
+      shippingNotes,
+      craftFabricNotes,
+      colourAvailabilityNotes,
+    });
+    if (textRuleError) {
+      setError(textRuleError);
       return;
     }
 
@@ -487,27 +534,46 @@ export function AdminAddProductView() {
       const ref = doc(db, "catalog_products", s);
       const existing = await getDoc(ref);
       if (existing.exists()) {
-        setError(`A product with slug “${s}” already exists. Pick another slug or edit the existing document.`);
+        setError(
+          `A product with slug “${s}” already exists. Pick another slug or edit the existing document.`,
+        );
         return;
       }
 
       let sourceUp: { downloadUrl: string; storagePath: string } | null = null;
       if (sourceFile) {
         setPublishMessage("Uploading original garment photo…");
-        sourceUp = await uploadCatalogProductSourceImage(storage, user.uid, s, sourceFile);
+        sourceUp = await uploadCatalogProductSourceImage(
+          storage,
+          user.uid,
+          s,
+          sourceFile,
+        );
         sourcePath = sourceUp.storagePath;
       }
 
       setPublishMessage("Uploading hero image…");
-      const heroUp = await uploadCatalogProductHeroImage(storage, user.uid, s, heroFile);
+      const heroUp = await uploadCatalogProductHeroImage(
+        storage,
+        user.uid,
+        s,
+        heroFile,
+      );
       heroPath = heroUp.storagePath;
 
       const galleryUrls: string[] = [];
       const gallerySlice = galleryFiles.slice(0, 6);
       for (let i = 0; i < gallerySlice.length; i++) {
         const f = gallerySlice[i]!;
-        setPublishMessage(`Uploading gallery image ${i + 1} of ${gallerySlice.length}…`);
-        const g = await uploadCatalogProductGalleryImage(storage, user.uid, s, f);
+        setPublishMessage(
+          `Uploading gallery image ${i + 1} of ${gallerySlice.length}…`,
+        );
+        const g = await uploadCatalogProductGalleryImage(
+          storage,
+          user.uid,
+          s,
+          f,
+        );
         galleryPaths.push(g.storagePath);
         galleryUrls.push(g.downloadUrl);
       }
@@ -525,7 +591,12 @@ export function AdminAddProductView() {
       let styleVariants;
       if (stylesEnabled) {
         setPublishMessage("Uploading style photos…");
-        styleVariants = await buildStyleVariantsForSave(styleDrafts, storage, user.uid, s);
+        styleVariants = await buildStyleVariantsForSave(
+          styleDrafts,
+          storage,
+          user.uid,
+          s,
+        );
         price = Math.min(...styleVariants.map((v) => v.price));
         compareAtPrice = undefined;
       }
@@ -542,19 +613,35 @@ export function AdminAddProductView() {
         ...(sourceUp ? { sourceImage: sourceUp.downloadUrl } : {}),
         ...(galleryImageUrls !== undefined ? { galleryImageUrls } : {}),
         ...(fittingNotes.trim() ? { fittingNotes: fittingNotes.trim() } : {}),
-        ...(fabricCareNotes.trim() ? { fabricCareNotes: fabricCareNotes.trim() } : {}),
-        ...(shippingNotes.trim() ? { shippingNotes: shippingNotes.trim() } : {}),
-        ...(craftFabricNotes.trim() ? { craftFabricNotes: craftFabricNotes.trim() } : {}),
+        ...(fabricCareNotes.trim()
+          ? { fabricCareNotes: fabricCareNotes.trim() }
+          : {}),
+        ...(shippingNotes.trim()
+          ? { shippingNotes: shippingNotes.trim() }
+          : {}),
+        ...(craftFabricNotes.trim()
+          ? { craftFabricNotes: craftFabricNotes.trim() }
+          : {}),
         ...(craftFabricLabels.length ? { craftFabricLabels } : {}),
-        ...(colourAvailabilityNotes.trim() ? { colourAvailabilityNotes: colourAvailabilityNotes.trim() } : {}),
+        ...(colourAvailabilityNotes.trim()
+          ? { colourAvailabilityNotes: colourAvailabilityNotes.trim() }
+          : {}),
       };
       const styleLinks = stylesEnabled
         ? resolveGalleryStyleLinksForSave(galleryStyleLinksByUrl, [
-            ...(heroPreviewUrl ? [{ from: heroPreviewUrl, to: heroUp.downloadUrl }] : []),
-            ...galleryPreviewUrls.map((from, i) => ({ from, to: galleryUrls[i]! })).filter((m) => m.to),
+            ...(heroPreviewUrl
+              ? [{ from: heroPreviewUrl, to: heroUp.downloadUrl }]
+              : []),
+            ...galleryPreviewUrls
+              .map((from, i) => ({ from, to: galleryUrls[i]! }))
+              .filter((m) => m.to),
           ])
         : undefined;
-      payload = withListingPriceFromVariants(payload, styleVariants, styleLinks);
+      payload = withListingPriceFromVariants(
+        payload,
+        styleVariants,
+        styleLinks,
+      );
 
       cataloguePayloadForDebug = payload;
       setPublishMessage("Saving to catalogue…");
@@ -606,7 +693,11 @@ export function AdminAddProductView() {
         err instanceof FirebaseError
           ? { firebaseCode: err.code, firebaseMessage: err.message }
           : {};
-      console.error("[admin/catalog/add] publish failed", { slug: s, uid: user?.uid, payloadSummary, ...firebaseMeta }, err);
+      console.error(
+        "[admin/catalog/add] publish failed",
+        { slug: s, uid: user?.uid, payloadSummary, ...firebaseMeta },
+        err,
+      );
       for (const p of galleryPaths) {
         if (storage) {
           try {
@@ -645,22 +736,43 @@ export function AdminAddProductView() {
   const canPublish = Boolean(heroFile && canUseStorage);
 
   return (
-    <div className={`mx-auto max-w-2xl space-y-8 ${adminFormFeedbackPadding(Boolean(error || doneSlug))}`}>
+    <div
+      className={`mx-auto max-w-2xl space-y-8 ${adminFormFeedbackPadding(Boolean(error || doneSlug))}`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">Add catalogue product</h2>
+          <h2 className="font-serif text-2xl font-semibold text-[var(--lf-ink)]">
+            Add catalogue product
+          </h2>
           <p className="mt-1 text-sm text-[var(--lf-muted)]">
-            Start with your <strong className="font-medium text-[var(--lf-ink)]">Lizzy Fusion mannequin hero</strong> image.
-            After upload, Gemini suggests catalogue copy tuned for Nigerian modest occasion wear (you can edit everything).
-            Optionally add an <strong className="font-medium text-[var(--lf-ink)]">original garment</strong> photo in Advanced
-            if you still want a separate <code className="rounded bg-zinc-100 px-1 text-xs">sourceImage</code> on the PDP.
+            Start with your{" "}
+            <strong className="font-medium text-[var(--lf-ink)]">
+              Lizzy Fusion mannequin hero
+            </strong>{" "}
+            image. After upload, Gemini suggests catalogue copy tuned for
+            Nigerian modest occasion wear (you can edit everything). Optionally
+            add an{" "}
+            <strong className="font-medium text-[var(--lf-ink)]">
+              original garment
+            </strong>{" "}
+            photo in Advanced if you still want a separate{" "}
+            <code className="rounded bg-zinc-100 px-1 text-xs">
+              sourceImage
+            </code>{" "}
+            on the PDP.
           </p>
           <p className="mt-2 text-xs text-[var(--lf-muted)]">
-            Server needs <code className="rounded bg-zinc-100 px-0.5 text-[11px]">GEMINI_API_KEY</code> for suggestions and
-            optional hero generation; Storage for uploads.
+            Server needs{" "}
+            <code className="rounded bg-zinc-100 px-0.5 text-[11px]">
+              GEMINI_API_KEY
+            </code>{" "}
+            for suggestions and optional hero generation; Storage for uploads.
           </p>
         </div>
-        <Link href="/admin/catalog" className="text-sm font-semibold text-[var(--lf-purple)] hover:underline">
+        <Link
+          href="/admin/catalog"
+          className="text-sm font-semibold text-[var(--lf-purple)] hover:underline"
+        >
           ← Catalogue list
         </Link>
       </div>
@@ -679,8 +791,9 @@ export function AdminAddProductView() {
             1. Mannequin hero (required)
           </legend>
           <p className="text-xs leading-relaxed text-[var(--lf-muted)]">
-            Upload the final Lizzy Fusion catalogue image (dress on mannequin / dress form). Gemini reads it and suggests
-            slug, price in Naira, PDP copy, and studio controls below—always review before publishing.
+            Upload the final Lizzy Fusion catalogue image (dress on mannequin /
+            dress form). Gemini reads it and suggests slug, price in Naira, PDP
+            copy, and studio controls below—always review before publishing.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <label className="inline-flex cursor-pointer rounded-full bg-[var(--lf-purple-deep)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple)]">
@@ -698,7 +811,9 @@ export function AdminAddProductView() {
                     return;
                   }
                   if (!f.type.startsWith("image/")) {
-                    setError("Hero must be an image file (JPEG, PNG, WebP, or GIF).");
+                    setError(
+                      "Hero must be an image file (JPEG, PNG, WebP, or GIF).",
+                    );
                     e.target.value = "";
                     return;
                   }
@@ -725,7 +840,11 @@ export function AdminAddProductView() {
                   lastSuggestedHeroKeyRef.current = null;
                   heroSuggestEpochRef.current += 1;
                   setSuggestAppliedAt(null);
-                  void suggestFromHero(heroFile, undefined, heroSuggestEpochRef.current);
+                  void suggestFromHero(
+                    heroFile,
+                    undefined,
+                    heroSuggestEpochRef.current,
+                  );
                 }}
                 className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-[var(--lf-ink)] transition hover:border-[var(--lf-purple)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-zinc-200"
               >
@@ -758,11 +877,14 @@ export function AdminAddProductView() {
                 aria-hidden="true"
               />
               <div className="min-w-0 flex-1 text-sm leading-snug text-[var(--lf-ink)]">
-                <p className="font-semibold">Drafting product details from your hero…</p>
+                <p className="font-semibold">
+                  Drafting product details from your hero…
+                </p>
                 <p className="mt-0.5 text-xs text-[var(--lf-muted)]">
-                  Gemini is suggesting the slug, name, price, PDP copy and studio controls below. This usually takes
-                  10–20 seconds — please leave those fields alone until they fill in, then review and edit anything
-                  before publishing.
+                  Gemini is suggesting the slug, name, price, PDP copy and
+                  studio controls below. This usually takes 10–20 seconds —
+                  please leave those fields alone until they fill in, then
+                  review and edit anything before publishing.
                 </p>
               </div>
             </div>
@@ -780,10 +902,14 @@ export function AdminAddProductView() {
                 ✓
               </span>
               <div className="min-w-0 flex-1 text-sm leading-snug text-emerald-900">
-                <p className="font-semibold">Suggestions applied — review and edit below before publishing.</p>
+                <p className="font-semibold">
+                  Suggestions applied — review and edit below before publishing.
+                </p>
                 <p className="mt-0.5 text-xs text-emerald-800/90">
-                  Copy, dress category, and style/price suggestions are fully editable. Check dress styles and
-                  “Which styles does each photo show?” before publishing. Use “Refresh AI suggestions” to try again.
+                  Copy, dress category, and style/price suggestions are fully
+                  editable. Check dress styles and “Which styles does each photo
+                  show?” before publishing. Use “Refresh AI suggestions” to try
+                  again.
                 </p>
               </div>
               <button
@@ -797,9 +923,17 @@ export function AdminAddProductView() {
           ) : null}
           {heroPreviewUrl ? (
             <div>
-              <p className="text-sm font-medium text-[var(--lf-ink)]">Hero preview</p>
+              <p className="text-sm font-medium text-[var(--lf-ink)]">
+                Hero preview
+              </p>
               <div className="relative mt-2 h-52 w-full max-w-sm overflow-hidden rounded-lg border border-zinc-200 bg-white">
-                <Image src={heroPreviewUrl} alt="Hero preview" fill unoptimized className="object-contain" />
+                <Image
+                  src={heroPreviewUrl}
+                  alt="Hero preview"
+                  fill
+                  unoptimized
+                  className="object-contain"
+                />
               </div>
               <div className="mt-2 flex flex-wrap gap-3">
                 <button
@@ -815,7 +949,10 @@ export function AdminAddProductView() {
         </fieldset>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ap-slug">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="ap-slug"
+          >
             Slug (URL)
           </label>
           <div className="mt-1.5 flex flex-wrap gap-2">
@@ -835,27 +972,51 @@ export function AdminAddProductView() {
               Derive from name
             </button>
           </div>
-          <p className="mt-1 text-xs text-[var(--lf-muted)]">Lowercase, hyphens; becomes /shop/[slug] and the Firestore document id.</p>
+          <p className="mt-1 text-xs text-[var(--lf-muted)]">
+            Lowercase, hyphens; becomes /shop/[slug] and the Firestore document
+            id.
+          </p>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ap-name">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="ap-name"
+          >
             Name
           </label>
-          <input id="ap-name" className={`${inputClass} mt-1.5`} value={name} onChange={(e) => setName(e.target.value)} required />
+          <input
+            id="ap-name"
+            className={`${inputClass} mt-1.5`}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ap-tag">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="ap-tag"
+          >
             Collection / tag
           </label>
-          <input id="ap-tag" className={`${inputClass} mt-1.5`} value={tag} onChange={(e) => setTag(e.target.value)} required />
+          <input
+            id="ap-tag"
+            className={`${inputClass} mt-1.5`}
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+            required
+          />
         </div>
 
         {!stylesEnabled ? (
           <>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ap-price">
+              <label
+                className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+                htmlFor="ap-price"
+              >
                 Price (₦, whole number)
               </label>
               <input
@@ -885,8 +1046,9 @@ export function AdminAddProductView() {
                 placeholder="Leave blank unless this piece is on sale"
               />
               <p className="mt-1 text-xs text-[var(--lf-muted)]">
-                When set, must be higher than the price above (shown as strikethrough “was” on the shop). Checkout still
-                uses the current price.
+                When set, must be higher than the price above (shown as
+                strikethrough “was” on the shop). Checkout still uses the
+                current price.
               </p>
             </div>
           </>
@@ -901,14 +1063,26 @@ export function AdminAddProductView() {
         />
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ap-lead">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="ap-lead"
+          >
             Lead time / fulfilment note
           </label>
-          <textarea id="ap-lead" className={`${inputClass} mt-1.5 min-h-[88px] resize-y`} value={lead} onChange={(e) => setLead(e.target.value)} required />
+          <textarea
+            id="ap-lead"
+            className={`${inputClass} mt-1.5 min-h-[88px] resize-y`}
+            value={lead}
+            onChange={(e) => setLead(e.target.value)}
+            required
+          />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="ap-desc">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="ap-desc"
+          >
             Description
           </label>
           <textarea
@@ -925,8 +1099,10 @@ export function AdminAddProductView() {
             Storefront product page (optional)
           </legend>
           <p className="text-xs leading-relaxed text-[var(--lf-muted)]">
-            These fields match what shoppers see on the product page: gallery thumbnails, colour copy, accordions (Fitting,
-            Fabric & care, Shipping), and the Craft & fabric panel. Leave blank to use site defaults.
+            These fields match what shoppers see on the product page: gallery
+            thumbnails, colour copy, accordions (Fitting, Fabric & care,
+            Shipping), and the Craft & fabric panel. Leave blank to use site
+            defaults.
           </p>
 
           <label className="flex cursor-pointer items-start gap-2 text-sm text-[var(--lf-ink)]">
@@ -937,20 +1113,28 @@ export function AdminAddProductView() {
               onChange={(e) => setGalleryRestrictNoLookbook(e.target.checked)}
             />
             <span>
-              <span className="font-medium">{"Gallery: only this dress's photos"}</span>
+              <span className="font-medium">
+                {"Gallery: only this dress's photos"}
+              </span>
               <span className="mt-0.5 block text-xs font-normal text-[var(--lf-muted)]">
-                When checked, the shop gallery uses the hero (and any extras below)—no generic lookbook filler. Uncheck to
-                keep the old behaviour if you want extra thumbnails before you upload more angles.
+                When checked, the shop gallery uses the hero (and any extras
+                below)—no generic lookbook filler. Uncheck to keep the old
+                behaviour if you want extra thumbnails before you upload more
+                angles.
               </span>
             </span>
           </label>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-gallery-files">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ap-gallery-files"
+            >
               Extra gallery images (optional, max 6)
             </label>
             <p className="mt-0.5 text-xs text-[var(--lf-muted)]">
-              Additional angles or detail shots; each max 5 MB. Shown as thumbnails next to the hero on the PDP.
+              Additional angles or detail shots; each max 5 MB. Shown as
+              thumbnails next to the hero on the PDP.
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <label className="inline-flex cursor-pointer rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-[var(--lf-ink)] transition hover:border-[var(--lf-purple)]">
@@ -961,7 +1145,9 @@ export function AdminAddProductView() {
                   multiple
                   className="sr-only"
                   onChange={(e) => {
-                    const picked = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith("image/"));
+                    const picked = Array.from(e.target.files ?? []).filter(
+                      (f) => f.type.startsWith("image/"),
+                    );
                     const combined = [...galleryFiles, ...picked].slice(0, 6);
                     if (picked.length + galleryFiles.length > 6) {
                       setError("You can add at most 6 extra gallery images.");
@@ -1004,10 +1190,15 @@ export function AdminAddProductView() {
           ) : null}
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-colour-notes">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ap-colour-notes"
+            >
               Colours / fabric availability (optional)
             </label>
-            <p className="mt-0.5 text-xs text-[var(--lf-muted)]">Shown under the colour swatches on the PDP.</p>
+            <p className="mt-0.5 text-xs text-[var(--lf-muted)]">
+              Shown under the colour swatches on the PDP.
+            </p>
             <textarea
               id="ap-colour-notes"
               className={`${inputClass} mt-1.5 min-h-[72px] resize-y`}
@@ -1018,7 +1209,10 @@ export function AdminAddProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-fitting">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ap-fitting"
+            >
               Fitting section (optional)
             </label>
             <textarea
@@ -1031,7 +1225,10 @@ export function AdminAddProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-fabric">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ap-fabric"
+            >
               Fabric & care section (optional)
             </label>
             <textarea
@@ -1043,7 +1240,10 @@ export function AdminAddProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-shipping">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ap-shipping"
+            >
               Shipping & returns section (optional)
             </label>
             <textarea
@@ -1055,7 +1255,10 @@ export function AdminAddProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-craft-body">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ap-craft-body"
+            >
               Craft & fabric panel — main paragraph (optional)
             </label>
             <textarea
@@ -1067,10 +1270,15 @@ export function AdminAddProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-craft-labels">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ap-craft-labels"
+            >
               Craft & fabric — chip labels (optional)
             </label>
-            <p className="mt-0.5 text-xs text-[var(--lf-muted)]">Comma or newline separated, up to 8 short phrases.</p>
+            <p className="mt-0.5 text-xs text-[var(--lf-muted)]">
+              Comma or newline separated, up to 8 short phrases.
+            </p>
             <textarea
               id="ap-craft-labels"
               className={`${inputClass} mt-1.5 min-h-[56px] resize-y`}
@@ -1087,10 +1295,16 @@ export function AdminAddProductView() {
           </legend>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-source">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ap-source"
+            >
               Original garment photo (optional)
             </label>
-            <p className="mt-0.5 text-xs text-[var(--lf-muted)]">On model, flat lay, or hanger — max 5 MB. Used as the truthful inventory reference.</p>
+            <p className="mt-0.5 text-xs text-[var(--lf-muted)]">
+              On model, flat lay, or hanger — max 5 MB. Used as the truthful
+              inventory reference.
+            </p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <label className="inline-flex cursor-pointer rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-[var(--lf-ink)] transition hover:border-[var(--lf-purple)]">
                 <input
@@ -1106,7 +1320,11 @@ export function AdminAddProductView() {
                 />
                 Choose file
               </label>
-              {sourceFile ? <span className="text-sm text-[var(--lf-muted)]">{sourceFile.name}</span> : null}
+              {sourceFile ? (
+                <span className="text-sm text-[var(--lf-muted)]">
+                  {sourceFile.name}
+                </span>
+              ) : null}
               {sourceFile ? (
                 <button
                   type="button"
@@ -1121,13 +1339,21 @@ export function AdminAddProductView() {
             </div>
             {sourcePreviewUrl ? (
               <div className="relative mt-3 h-44 w-full max-w-xs overflow-hidden rounded-lg border border-zinc-200 bg-white">
-                <Image src={sourcePreviewUrl} alt="Original preview" fill unoptimized className="object-contain" />
+                <Image
+                  src={sourcePreviewUrl}
+                  alt="Original preview"
+                  fill
+                  unoptimized
+                  className="object-contain"
+                />
               </div>
             ) : null}
           </div>
 
           <div>
-            <span className="block text-sm font-medium text-[var(--lf-ink)]">Mannequin context</span>
+            <span className="block text-sm font-medium text-[var(--lf-ink)]">
+              Mannequin context
+            </span>
             <div className="mt-2 flex flex-wrap gap-4 text-sm text-[var(--lf-ink)]">
               {(
                 [
@@ -1136,7 +1362,10 @@ export function AdminAddProductView() {
                   ["child", "Child mannequin"],
                 ] as const
               ).map(([value, label]) => (
-                <label key={value} className="inline-flex cursor-pointer items-center gap-2">
+                <label
+                  key={value}
+                  className="inline-flex cursor-pointer items-center gap-2"
+                >
                   <input
                     type="radio"
                     name="garment-audience"
@@ -1152,7 +1381,10 @@ export function AdminAddProductView() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-dress-category">
+              <label
+                className="block text-sm font-medium text-[var(--lf-ink)]"
+                htmlFor="ap-dress-category"
+              >
                 Dress type
               </label>
               <select
@@ -1172,7 +1404,10 @@ export function AdminAddProductView() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-mannequin-style">
+              <label
+                className="block text-sm font-medium text-[var(--lf-ink)]"
+                htmlFor="ap-mannequin-style"
+              >
                 Mannequin type
               </label>
               <select
@@ -1192,7 +1427,10 @@ export function AdminAddProductView() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-position-style">
+              <label
+                className="block text-sm font-medium text-[var(--lf-ink)]"
+                htmlFor="ap-position-style"
+              >
                 Positioning style
               </label>
               <select
@@ -1210,12 +1448,16 @@ export function AdminAddProductView() {
                 ))}
               </select>
               <p className="mt-1 text-xs text-[var(--lf-muted)]">
-                Keep this and mannequin type on auto to get a different pose and display form for each generation.
+                Keep this and mannequin type on auto to get a different pose and
+                display form for each generation.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-background">
+              <label
+                className="block text-sm font-medium text-[var(--lf-ink)]"
+                htmlFor="ap-background"
+              >
                 Background
               </label>
               <select
@@ -1235,7 +1477,10 @@ export function AdminAddProductView() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-lighting">
+              <label
+                className="block text-sm font-medium text-[var(--lf-ink)]"
+                htmlFor="ap-lighting"
+              >
                 Lighting
               </label>
               <select
@@ -1255,7 +1500,10 @@ export function AdminAddProductView() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-camera-angle">
+              <label
+                className="block text-sm font-medium text-[var(--lf-ink)]"
+                htmlFor="ap-camera-angle"
+              >
                 Camera angle
               </label>
               <select
@@ -1276,7 +1524,10 @@ export function AdminAddProductView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--lf-ink)]" htmlFor="ap-hero-notes">
+            <label
+              className="block text-sm font-medium text-[var(--lf-ink)]"
+              htmlFor="ap-hero-notes"
+            >
               Optional notes for Gemini
             </label>
             <textarea
@@ -1295,10 +1546,14 @@ export function AdminAddProductView() {
               onClick={() => void generateCatalogHero()}
               className="rounded-full bg-[var(--lf-purple-deep)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple)] disabled:opacity-50"
             >
-              {geminiBusy ? "Generating…" : "Generate new hero from original photo (replaces current hero)"}
+              {geminiBusy
+                ? "Generating…"
+                : "Generate new hero from original photo (replaces current hero)"}
             </button>
             {!canUseStorage ? (
-              <p className="mt-2 text-xs text-[var(--lf-muted)]">Sign in as an admin with Storage configured to run generation.</p>
+              <p className="mt-2 text-xs text-[var(--lf-muted)]">
+                Sign in as an admin with Storage configured to run generation.
+              </p>
             ) : null}
           </div>
         </fieldset>
@@ -1309,7 +1564,11 @@ export function AdminAddProductView() {
             disabled={busy || suggestBusy || !canPublish}
             className="rounded-full bg-[var(--lf-ink)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple-deep)] disabled:opacity-50"
           >
-            {busy ? "Publishing…" : suggestBusy ? "Waiting for AI draft…" : "Publish to catalogue"}
+            {busy
+              ? "Publishing…"
+              : suggestBusy
+                ? "Waiting for AI draft…"
+                : "Publish to catalogue"}
           </button>
           {busy ? (
             <p className="text-xs text-[var(--lf-muted)]" aria-live="polite">

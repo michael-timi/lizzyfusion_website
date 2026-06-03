@@ -6,7 +6,8 @@ import { CatalogPriceStack } from "@/components/shop/catalog-price-stack";
 import { WishlistHeart } from "@/components/shop/wishlist-heart";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import type { CatalogProduct } from "@/lib/catalog";
-import { hrefForKeywords, pickProductByKeywords } from "@/lib/catalog-keywords";
+import { hrefForKeywords } from "@/lib/catalog-keywords";
+import { pickDistinctProducts } from "@/components/layout/use-mega-catalog";
 import { landingMedia, site } from "@/lib/site";
 
 const filterBar =
@@ -109,10 +110,20 @@ export function MegaOccasionsPanel() {
   const aHref = catalog ? hrefForKeywords(catalog, a.keywords) : "/shop";
   const bHref = catalog ? hrefForKeywords(catalog, b.keywords) : "/shop";
 
+  // Resolve the two hero tiles and the four occasion cards in one distinct pass so no dress repeats
+  // anywhere in the panel.
+  const picks = pickDistinctProducts(catalog, [
+    a.keywords,
+    b.keywords,
+    ...occasionKeywordSets.map((o) => o.keywords),
+  ]);
+  const aImage = picks[0]?.image ?? a.image;
+  const bImage = picks[1]?.image ?? b.image;
+
   const products = catalog
     ? occasionKeywordSets
-        .map(({ keywords, badge }) => {
-          const p = pickProductByKeywords(catalog, keywords);
+        .map(({ badge }, i) => {
+          const p = picks[2 + i];
           return p ? { p, badge } : null;
         })
         .filter((x): x is { p: CatalogProduct; badge: "New" | "Restock" | undefined } => x !== null)
@@ -132,10 +143,10 @@ export function MegaOccasionsPanel() {
 
       <div className="grid grid-cols-2 gap-0 border border-[var(--lf-line)] bg-zinc-100">
         <Link href={aHref} className="group/oh relative aspect-[3/4] max-h-[min(22rem,42vh)] min-h-[12rem]">
-          <LfRemoteImage src={a.image} alt={a.label} fill className="object-cover transition duration-500 group-hover/oh:scale-[1.02]" sizes="50vw" />
+          <LfRemoteImage src={aImage} alt={a.label} fill className="object-cover transition duration-500 group-hover/oh:scale-[1.02]" sizes="50vw" />
         </Link>
         <Link href={bHref} className="group/oh relative aspect-[3/4] max-h-[min(22rem,42vh)] min-h-[12rem]">
-          <LfRemoteImage src={b.image} alt={b.label} fill className="object-cover transition duration-500 group-hover/oh:scale-[1.02]" sizes="50vw" />
+          <LfRemoteImage src={bImage} alt={b.label} fill className="object-cover transition duration-500 group-hover/oh:scale-[1.02]" sizes="50vw" />
         </Link>
       </div>
 
