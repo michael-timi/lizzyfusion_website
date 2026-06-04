@@ -9,7 +9,7 @@ export const WATERMARK_TEXT = "Lizzy Fusion";
 
 /** Tunable look. Opacity is intentionally low so the product stays the hero. */
 const WATERMARK_FILL = "#111111";
-const WATERMARK_OPACITY = 0.16;
+const WATERMARK_OPACITY = 0.1;
 const WATERMARK_ROTATION_DEG = -30;
 /** Longest edge we serve; bounds payload + sharp work for very large masters. */
 const MAX_OUTPUT_WIDTH = 1600;
@@ -27,7 +27,7 @@ function escapeXml(value: string): string {
 /** A full-canvas SVG with the wordmark tiled diagonally via an SVG pattern. */
 function buildWatermarkSvg(width: number, height: number): string {
   const text = escapeXml(WATERMARK_TEXT);
-  const fontSize = Math.max(10, Math.round(Math.min(width, height) * 0.028));
+  const fontSize = Math.max(9, Math.round(Math.min(width, height) * 0.02));
   // Tile big enough to hold the rotated wordmark plus breathing room.
   const approxTextWidth = Math.round(fontSize * WATERMARK_TEXT.length * 0.62);
   const tileWidth = approxTextWidth + fontSize * 4;
