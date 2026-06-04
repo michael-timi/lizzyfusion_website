@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ProductDetailView } from "@/components/shop/product-detail-view";
 import { getCatalogProductBySlug, getMergedCatalog } from "@/lib/catalog";
 import { buildProductPageMetadata } from "@/lib/product-metadata";
-import { catalogProductJsonLd } from "@/lib/product-json-ld";
+import { catalogProductJsonLd, jsonLdScriptContent } from "@/lib/product-json-ld";
 import { buildPdpGallery } from "@/lib/catalog-style-variants";
 import { galleryUrlsForProduct } from "@/lib/site";
 
@@ -42,7 +42,7 @@ export default async function ShopProductPage({ params }: PageProps) {
       <script
         type="application/ld+json"
         // JSON-LD for Google rich results (Product + Offer).
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(jsonLd) }}
       />
       <ProductDetailView
         product={product}

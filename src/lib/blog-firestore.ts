@@ -230,12 +230,6 @@ export async function updateCommentBody(
   await updateDoc(doc(db, POSTS, postId, "comments", commentId), { body: body.trim() });
 }
 
-export async function deleteComment(postId: string, commentId: string): Promise<void> {
-  const db = getFirebaseDb();
-  if (!db) throw new Error("No database");
-  await deleteDoc(doc(db, POSTS, postId, "comments", commentId));
-}
-
 /** Deletes a top-level comment and its replies, or a single reply. */
 export async function deleteCommentCascade(
   postId: string,

@@ -33,3 +33,11 @@ export function catalogProductJsonLd(product: CatalogProduct, slug: string): Rec
     },
   };
 }
+
+export function jsonLdScriptContent(value: unknown): string {
+  return JSON.stringify(value).replace(/[<>&]/g, (char) => {
+    if (char === "<") return "\\u003c";
+    if (char === ">") return "\\u003e";
+    return "\\u0026";
+  });
+}

@@ -142,32 +142,17 @@ export function resolveTileProducts(
   });
 }
 
-/**
- * Resolve everything a collection tile needs to render: link `href`, plus the `image`/`alt` of the
- * resolved product. When a tile resolves to a live product (pin or keywords), the storefront should
- * show THAT product's photo — not the static placeholder art on the tile — so the image matches the
- * PDP the tile links to. Falls back to the tile's own `image`/`label` only when no product resolves.
- *
- * Shared by the homepage "Collection" tiles and the Shop-all dual hero so both surfaces stay in sync.
- */
-export function resolveTileMedia(
-  featured: SiteFeatured,
-  catalog: readonly CatalogProduct[],
-  tile: { label: string; keywords: readonly string[]; image: string },
-): { product: CatalogProduct | null; href: string; image: string; alt: string; source: ResolutionSource } {
-  const resolved = resolveTileProduct(featured, catalog, tile);
-  return {
-    product: resolved.product,
-    href: resolved.href,
-    image: resolved.product?.image ?? tile.image,
-    alt: resolved.product?.name ?? tile.label,
-    source: resolved.source,
-  };
-}
-
 type TileMediaInput = TileProductInput & { image: string };
 type ResolvedTileMedia = ResolvedTileProduct & { image: string; alt: string };
 
+/**
+ * Resolve everything a group of collection tiles needs to render: link `href`, plus the `image`/`alt`
+ * of the resolved product. When a tile resolves to a live product (pin or keywords), the storefront
+ * should show THAT product's photo — not the static placeholder art on the tile — so the image matches
+ * the PDP the tile links to. Falls back to the tile's own `image`/`label` only when no product resolves.
+ *
+ * Shared by the homepage "Collection" tiles and the Shop-all dual hero so both surfaces stay in sync.
+ */
 export function resolveTileMediaList(
   featured: SiteFeatured,
   catalog: readonly CatalogProduct[],
