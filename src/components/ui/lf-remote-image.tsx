@@ -1,19 +1,42 @@
 "use client";
 
 import Image, { type ImageProps } from "next/image";
+import { usePathname } from "next/navigation";
 import { useCallback, useState } from "react";
 
 type LoadPhase = "loading" | "loaded" | "error";
 
+/** Catalogue masters live on these hosts; we serve them brand-watermarked via `/api/img`. */
+function isWatermarkedStorageHost(host: string): boolean {
+  return host === "firebasestorage.googleapis.com" || host === "storage.googleapis.com";
+}
+
+/**
+ * Route Firebase Storage catalogue images through the brand-watermark proxy so the
+ * delivered/saved image carries the Lizzy Fusion wordmark. Other sources pass through.
+ */
+function brandedSrc(src: ImageProps["src"]): ImageProps["src"] {
+  if (typeof src !== "string") return src;
+  try {
+    if (isWatermarkedStorageHost(new URL(src).hostname)) {
+      return `/api/img?src=${encodeURIComponent(src)}`;
+    }
+  } catch {
+    return src;
+  }
+  return src;
+}
+
 /** Next's optimizer proxy times out on slow remote fetches; load these URLs directly in the browser. */
 function bypassOptimizerForSrc(src: ImageProps["src"]): boolean {
   if (typeof src !== "string") return false;
+  // Already processed + same-origin once routed through the watermark proxy.
+  if (src.startsWith("/api/img?")) return true;
   try {
     const host = new URL(src).hostname;
     if (host === "images.unsplash.com") return true;
     // Large catalog PNGs from Storage often exceed the optimizer's ~7s fetch/resize window.
-    if (host === "firebasestorage.googleapis.com") return true;
-    if (host === "storage.googleapis.com") return true;
+    if (isWatermarkedStorageHost(host)) return true;
     return false;
   } catch {
     return false;
@@ -25,12 +48,16 @@ function bypassOptimizerForSrc(src: ImageProps["src"]): boolean {
  * For `fill`, use inside a `position: relative` container with explicit dimensions.
  */
 export function LfRemoteImage(props: ImageProps) {
-  const unoptimized = props.unoptimized ?? bypassOptimizerForSrc(props.src);
+  const pathname = usePathname();
+  // Admin views work with the clean Storage masters; only the public storefront is watermarked.
+  const isAdminView = pathname?.startsWith("/admin") ?? false;
+  const src = isAdminView ? props.src : brandedSrc(props.src);
+  const unoptimized = props.unoptimized ?? bypassOptimizerForSrc(src);
   if (!props.fill) {
-    return <Image {...props} alt={props.alt ?? ""} unoptimized={unoptimized} />;
+    return <Image {...props} src={src} alt={props.alt ?? ""} unoptimized={unoptimized} />;
   }
 
-  return <LfRemoteImageFill {...props} fill={true} unoptimized={unoptimized} />;
+  return <LfRemoteImageFill {...props} src={src} fill={true} unoptimized={unoptimized} />;
 }
 
 type FillProps = ImageProps & { fill: true };

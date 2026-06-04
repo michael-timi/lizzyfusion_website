@@ -16,6 +16,7 @@ import { formatNgn, site } from "@/lib/site";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import { ProductShareButton } from "./product-share-button";
 import { WishlistHeart } from "./wishlist-heart";
+import { AdminEditProductLink } from "./admin-edit-product-link";
 
 type Props = {
   product: CatalogProduct;
@@ -234,6 +235,7 @@ export function ProductDetailView({ product, gallery, variantIdsByIndex = [], re
 
         {/* Product panel */}
         <div className="min-w-0">
+          <AdminEditProductLink slug={product.slug} />
           <h1 className="font-serif text-3xl font-semibold tracking-tight text-[var(--lf-ink)] sm:text-4xl">{product.name}</h1>
           <p className="mt-2 text-sm font-medium uppercase tracking-wider text-[var(--lf-muted)]">{product.tag}</p>
           <p className="mt-4 text-sm leading-relaxed text-[var(--lf-muted)]">{product.description}</p>

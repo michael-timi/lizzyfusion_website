@@ -840,7 +840,7 @@ export function AdminEditProductView({ catalogSlug }: Props) {
           />
         </div>
 
-        <fieldset className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/40 p-4">
+        <fieldset className="min-w-0 min-inline-0 space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/40 p-4">
           <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]">
             Storefront product page
           </legend>
@@ -878,7 +878,7 @@ export function AdminEditProductView({ catalogSlug }: Props) {
             </label>
             <textarea
               id="ep-colour-notes"
-              className={`${inputClass} mt-1.5 min-h-[72px] resize-y`}
+              className={`${inputClass} mt-1.5 min-h-[72px] min-w-0 resize-y wrap-anywhere`}
               value={colourAvailabilityNotes}
               onChange={(e) => setColourAvailabilityNotes(e.target.value)}
             />
@@ -893,7 +893,7 @@ export function AdminEditProductView({ catalogSlug }: Props) {
             </label>
             <textarea
               id="ep-fitting"
-              className={`${inputClass} mt-1.5 min-h-[72px] resize-y`}
+              className={`${inputClass} mt-1.5 min-h-[72px] min-w-0 resize-y wrap-anywhere`}
               value={fittingNotes}
               onChange={(e) => setFittingNotes(e.target.value)}
             />
@@ -908,7 +908,7 @@ export function AdminEditProductView({ catalogSlug }: Props) {
             </label>
             <textarea
               id="ep-fabric"
-              className={`${inputClass} mt-1.5 min-h-[72px] resize-y`}
+              className={`${inputClass} mt-1.5 min-h-[72px] min-w-0 resize-y wrap-anywhere`}
               value={fabricCareNotes}
               onChange={(e) => setFabricCareNotes(e.target.value)}
             />
@@ -923,7 +923,7 @@ export function AdminEditProductView({ catalogSlug }: Props) {
             </label>
             <textarea
               id="ep-shipping"
-              className={`${inputClass} mt-1.5 min-h-[72px] resize-y`}
+              className={`${inputClass} mt-1.5 min-h-[72px] min-w-0 resize-y wrap-anywhere`}
               value={shippingNotes}
               onChange={(e) => setShippingNotes(e.target.value)}
             />
@@ -938,7 +938,7 @@ export function AdminEditProductView({ catalogSlug }: Props) {
             </label>
             <textarea
               id="ep-craft-body"
-              className={`${inputClass} mt-1.5 min-h-[88px] resize-y`}
+              className={`${inputClass} mt-1.5 min-h-[88px] min-w-0 resize-y wrap-anywhere`}
               value={craftFabricNotes}
               onChange={(e) => setCraftFabricNotes(e.target.value)}
             />
@@ -953,7 +953,7 @@ export function AdminEditProductView({ catalogSlug }: Props) {
             </label>
             <textarea
               id="ep-craft-labels"
-              className={`${inputClass} mt-1.5 min-h-[56px] resize-y`}
+              className={`${inputClass} mt-1.5 min-h-[56px] min-w-0 resize-y wrap-anywhere`}
               value={craftFabricLabelsInput}
               onChange={(e) => setCraftFabricLabelsInput(e.target.value)}
               placeholder="Comma or newline separated"

@@ -80,7 +80,7 @@ export function AdminGalleryStyleLinks({
   const allIds = styleOptions.map((o) => o.id);
 
   return (
-    <div className="space-y-3 rounded-lg border border-violet-200 bg-violet-50/50 p-4">
+    <div className="min-w-0 space-y-3 rounded-lg border border-violet-200 bg-violet-50/50 p-4">
       <div>
         <p className="text-sm font-semibold text-[var(--lf-ink)]">Which styles does each photo show?</p>
         <p className="mt-1 text-xs leading-relaxed text-[var(--lf-muted)]">
@@ -94,8 +94,8 @@ export function AdminGalleryStyleLinks({
           const selected = linksByUrl[url] ?? [];
           const shortLabel = url.length > 56 ? `${url.slice(0, 56)}…` : url;
           return (
-            <li key={url} className="rounded-lg border border-zinc-200 bg-white p-3">
-              <p className="truncate font-mono text-[11px] text-[var(--lf-muted)]" title={url}>
+            <li key={url} className="min-w-0 rounded-lg border border-zinc-200 bg-white p-3">
+              <p className="break-all font-mono text-[11px] text-[var(--lf-muted)]" title={url}>
                 {shortLabel}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -132,7 +132,7 @@ export function AdminGalleryStyleLinks({
               </div>
               <div className="mt-2 flex flex-wrap gap-3">
                 {styleOptions.map((opt) => (
-                  <label key={`${url}-${opt.id}`} className="inline-flex cursor-pointer items-center gap-1.5 text-xs">
+                  <label key={`${url}-${opt.id}`} className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 text-xs">
                     <input
                       type="checkbox"
                       className="accent-[var(--lf-purple-deep)]"
@@ -140,7 +140,7 @@ export function AdminGalleryStyleLinks({
                       checked={selected.includes(opt.id)}
                       onChange={() => toggle(url, opt.id)}
                     />
-                    <span className="text-[var(--lf-ink)]">{opt.label}</span>
+                    <span className="wrap-break-word text-[var(--lf-ink)]">{opt.label}</span>
                   </label>
                 ))}
               </div>
