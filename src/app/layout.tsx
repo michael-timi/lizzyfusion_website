@@ -22,17 +22,15 @@ const serif = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   metadataBase: new URL(publicSiteUrl()),
-  /** Explicit `/public/icon.png` — not `app/icon.*` — so the tab icon is always Lizzy Fusion's mark. */
-  icons: {
-    icon: [{ url: "/icon.png", type: "image/png", sizes: "285x281" }],
-    apple: [{ url: "/icon.png", type: "image/png", sizes: "285x281" }],
-    shortcut: "/icon.png",
-  },
   title: {
     default: `${site.name} — ${site.slogan}`,
     template: `%s — ${site.name}`,
   },
   description: `${site.name} in ${site.location.line}. Bespoke, ready-to-wear, and custom modest fashion in Naira. ${site.slogan}`,
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png" }],
+  },
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
     ? { verification: { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } }
     : {}),

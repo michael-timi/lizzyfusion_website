@@ -212,6 +212,49 @@ export async function listFirestoreCatalogProducts(): Promise<CatalogProduct[]> 
 }
 
 /**
+ * Server-managed document timestamps for a `catalog_products` row.
+ *
+ * Catalogue products do not carry an app-level `createdAt`/`updatedAt` field, but every Firestore
+ * document exposes intrinsic `createTime`/`updateTime` metadata via the Admin SDK. We surface those
+ * (as epoch millis) so the admin catalogue can filter by when a product was first written / last
+ * edited without any schema change or backfill. Code-default products that have not been seeded to
+ * Firestore have no document, so they appear here with no entry (and thus no date).
+ */
+export type AdminCatalogProductMeta = {
+  slug: string;
+  /** When the Firestore document was first created (epoch ms), or null if unavailable. */
+  createdAtMs: number | null;
+  /** When the Firestore document was last written (epoch ms), or null if unavailable. */
+  updatedAtMs: number | null;
+};
+
+/**
+ * Read the server-managed `createTime`/`updateTime` of every `catalog_products` document.
+ *
+ * Uncached on purpose (like {@link getCatalogConnectionStatus}) so the admin table always reflects
+ * the latest edit times. Returns `[]` when Admin credentials are missing or the read fails, so the
+ * admin table still renders (just without date metadata).
+ */
+export async function listFirestoreCatalogMeta(): Promise<AdminCatalogProductMeta[]> {
+  const db = getAdminFirestore();
+  if (!db) return [];
+  try {
+    const snap = await db.collection("catalog_products").get();
+    return snap.docs.map((d) => ({
+      slug: d.id,
+      createdAtMs: d.createTime ? d.createTime.toMillis() : null,
+      updatedAtMs: d.updateTime ? d.updateTime.toMillis() : null,
+    }));
+  } catch (e) {
+    if (process.env.NODE_ENV !== "production") {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`[catalog] Firestore meta read failed: ${msg}`);
+    }
+    return [];
+  }
+}
+
+/**
  * Storefront catalogue. **Firestore is the single source of truth on a seeded project.**
  *
  * Behaviour:

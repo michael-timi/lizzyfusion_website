@@ -34,8 +34,8 @@ export function AdminCatalogGalleryFields({
   const totalCount = existingUrls.length + newFiles.length + urlLines.split("\n").filter((l) => l.trim().startsWith("https://")).length;
 
   return (
-    <div className="space-y-4">
-      <label className="flex cursor-pointer items-start gap-2 text-sm text-[var(--lf-ink)]">
+    <div className="min-w-0 space-y-4">
+      <label className="flex min-w-0 cursor-pointer items-start gap-2 text-sm text-[var(--lf-ink)]">
         <input
           type="checkbox"
           className="mt-1 accent-[var(--lf-purple-deep)]"
@@ -43,7 +43,7 @@ export function AdminCatalogGalleryFields({
           disabled={disabled}
           onChange={(e) => onControlledChange(e.target.checked)}
         />
-        <span>
+        <span className="min-w-0">
           <span className="font-medium">{restrictLabel}</span>
           <span className="mt-0.5 block text-xs font-normal text-[var(--lf-muted)]">{restrictHelp}</span>
         </span>
@@ -58,8 +58,8 @@ export function AdminCatalogGalleryFields({
         {existingUrls.length > 0 ? (
           <ul className="mt-2 space-y-1">
             {existingUrls.map((url) => (
-              <li key={url} className="flex items-start gap-2 text-xs">
-                <span className="min-w-0 flex-1 truncate font-mono text-[var(--lf-muted)]">{url}</span>
+              <li key={url} className="flex min-w-0 items-start gap-2 text-xs">
+                <span className="min-w-0 flex-1 break-all font-mono text-[var(--lf-muted)]">{url}</span>
                 <button
                   type="button"
                   disabled={disabled}
@@ -109,7 +109,7 @@ export function AdminCatalogGalleryFields({
         ) : null}
 
         <textarea
-          className={`${inputClass} mt-3 min-h-[80px] resize-y font-mono text-xs`}
+          className={`${inputClass} mt-3 min-h-[80px] min-w-0 resize-y font-mono text-xs wrap-anywhere`}
           value={urlLines}
           disabled={disabled || !controlled}
           onChange={(e) => onUrlLinesChange(e.target.value)}

@@ -6,18 +6,21 @@ import { productHasStyleVariants } from "@/lib/catalog-style-variants";
 import {
   getCatalogConnectionStatus,
   getMergedCatalog,
+  listFirestoreCatalogMeta,
   listFirestoreCatalogProducts,
 } from "@/lib/catalog";
 import { formatNgn, sampleProducts, site } from "@/lib/site";
 
 export async function AdminCatalogView() {
-  const [merged, remoteRows, status] = await Promise.all([
+  const [merged, remoteRows, meta, status] = await Promise.all([
     getMergedCatalog(),
     listFirestoreCatalogProducts(),
+    listFirestoreCatalogMeta(),
     getCatalogConnectionStatus(),
   ]);
   const codeSlugs = new Set<string>(sampleProducts.map((p) => p.slug));
   const remoteSlugs = new Set(remoteRows.map((p) => p.slug));
+  const metaBySlug = new Map(meta.map((m) => [m.slug, m]));
 
   const rows: AdminCatalogRow[] = merged.map((p) => {
     const inCode = codeSlugs.has(p.slug);
@@ -29,6 +32,7 @@ export async function AdminCatalogView() {
         : "Firestore override";
     const displayPrice = catalogDisplayPrice(p);
     const was = effectiveCompareAtPrice(p);
+    const docMeta = metaBySlug.get(p.slug);
     return {
       slug: p.slug,
       name: p.name,
@@ -38,6 +42,8 @@ export async function AdminCatalogView() {
       origin,
       hasRemote: remoteSlugs.has(p.slug),
       hasStyleVariants: productHasStyleVariants(p),
+      createdAtMs: docMeta?.createdAtMs ?? null,
+      updatedAtMs: docMeta?.updatedAtMs ?? null,
     };
   });
 

@@ -10,10 +10,6 @@ import type { CatalogConnectionStatus } from "@/lib/catalog";
  */
 export function AdminCatalogStatusBanner({ status }: { status: CatalogConnectionStatus }) {
   if (status.ok) {
-    const credLine =
-      status.credStatus.via === "path"
-        ? `via FIREBASE_SERVICE_ACCOUNT_PATH (${status.credStatus.path})`
-        : "via inline FIREBASE_SERVICE_ACCOUNT_JSON";
     return (
       <div
         className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-2 text-sm"
@@ -29,7 +25,6 @@ export function AdminCatalogStatusBanner({ status }: { status: CatalogConnection
           {status.productCount} {status.productCount === 1 ? "product" : "products"} in Firestore ·
           storefront PDPs will resolve immediately after each save.
         </span>
-        <span className="text-xs text-emerald-800/70">{credLine}</span>
       </div>
     );
   }

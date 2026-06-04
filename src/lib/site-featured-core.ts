@@ -91,6 +91,101 @@ export function resolveTileProduct(
   return { product: null, href: hrefForKeywords(catalog, tile.keywords), source: "search-fallback" };
 }
 
+type TileProductInput = { label: string; keywords: readonly string[] };
+type ResolvedTileProduct = { product: CatalogProduct | null; href: string; source: ResolutionSource };
+
+function resolveUnpinnedTileProduct(
+  catalog: readonly CatalogProduct[],
+  tile: TileProductInput,
+): ResolvedTileProduct {
+  const kw = pickProductByKeywords(catalog, tile.keywords);
+  if (kw) return { product: kw, href: `/shop/${kw.slug}`, source: "keywords" };
+  return { product: null, href: hrefForKeywords(catalog, tile.keywords), source: "search-fallback" };
+}
+
+/**
+ * Resolve a group of collection tiles together, reserving each keyword/fallback product as it is
+ * chosen so later tiles can pick the next-best distinct catalogue product.
+ *
+ * Admin pins remain authoritative: a live pinned product is used even if an earlier tile already
+ * resolved to the same slug. For non-pinned tiles, we try an unused keyword match first, then the
+ * next unused catalogue product as a fallback. Duplicates are only allowed after every distinct
+ * catalogue product has already been used.
+ */
+export function resolveTileProducts(
+  featured: SiteFeatured,
+  catalog: readonly CatalogProduct[],
+  tiles: readonly TileProductInput[],
+): ResolvedTileProduct[] {
+  const usedSlugs = new Set<string>();
+
+  return tiles.map((tile) => {
+    const pinned = featured.collectionTilePins[tile.label];
+    if (pinned) {
+      const p = catalog.find((c) => c.slug === pinned);
+      if (p) {
+        usedSlugs.add(p.slug);
+        return { product: p, href: `/shop/${p.slug}`, source: "pin" };
+      }
+    }
+
+    const unusedCatalog = catalog.filter((p) => !usedSlugs.has(p.slug));
+    const unusedKeywordMatch = pickProductByKeywords(unusedCatalog, tile.keywords);
+    const resolved =
+      unusedKeywordMatch
+        ? { product: unusedKeywordMatch, href: `/shop/${unusedKeywordMatch.slug}`, source: "keywords" as const }
+        : unusedCatalog[0]
+          ? { product: unusedCatalog[0], href: `/shop/${unusedCatalog[0].slug}`, source: "search-fallback" as const }
+          : resolveUnpinnedTileProduct(catalog, tile);
+    if (resolved.product) usedSlugs.add(resolved.product.slug);
+    return resolved;
+  });
+}
+
+/**
+ * Resolve everything a collection tile needs to render: link `href`, plus the `image`/`alt` of the
+ * resolved product. When a tile resolves to a live product (pin or keywords), the storefront should
+ * show THAT product's photo — not the static placeholder art on the tile — so the image matches the
+ * PDP the tile links to. Falls back to the tile's own `image`/`label` only when no product resolves.
+ *
+ * Shared by the homepage "Collection" tiles and the Shop-all dual hero so both surfaces stay in sync.
+ */
+export function resolveTileMedia(
+  featured: SiteFeatured,
+  catalog: readonly CatalogProduct[],
+  tile: { label: string; keywords: readonly string[]; image: string },
+): { product: CatalogProduct | null; href: string; image: string; alt: string; source: ResolutionSource } {
+  const resolved = resolveTileProduct(featured, catalog, tile);
+  return {
+    product: resolved.product,
+    href: resolved.href,
+    image: resolved.product?.image ?? tile.image,
+    alt: resolved.product?.name ?? tile.label,
+    source: resolved.source,
+  };
+}
+
+type TileMediaInput = TileProductInput & { image: string };
+type ResolvedTileMedia = ResolvedTileProduct & { image: string; alt: string };
+
+export function resolveTileMediaList(
+  featured: SiteFeatured,
+  catalog: readonly CatalogProduct[],
+  tiles: readonly TileMediaInput[],
+): ResolvedTileMedia[] {
+  const resolvedProducts = resolveTileProducts(featured, catalog, tiles);
+  return tiles.map((tile, index) => {
+    const resolved = resolvedProducts[index];
+    return {
+      product: resolved.product,
+      href: resolved.href,
+      image: resolved.product?.image ?? tile.image,
+      alt: resolved.product?.name ?? tile.label,
+      source: resolved.source,
+    };
+  });
+}
+
 /**
  * Pick the "shop the look" pair for a lookbook day.
  *

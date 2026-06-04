@@ -5,6 +5,7 @@ import {
   isSiteFeatured,
   resolveLookPair,
   resolveTileProduct,
+  resolveTileProducts,
   type SiteFeatured,
 } from "./site-featured";
 
@@ -114,6 +115,66 @@ describe("resolveTileProduct", () => {
     expect(r.source).toBe("search-fallback");
     expect(r.product).toBeNull();
     expect(r.href).toContain("/shop?q=");
+  });
+});
+
+describe("resolveTileProducts", () => {
+  const emeraldCatalog: readonly CatalogProduct[] = [
+    makeProduct({
+      slug: "emerald-swirl",
+      name: "Emerald swirl maxi dress",
+      description: "Emerald occasion dress.",
+    }),
+    makeProduct({
+      slug: "sapphire-overlay",
+      name: "Sapphire overlay frock",
+      description: "Sapphire occasion dress.",
+    }),
+    makeProduct({
+      slug: "ruby-frock",
+      name: "Ruby frock",
+      description: "Ruby occasion dress.",
+    }),
+  ];
+
+  it("resolves repeated keyword picks to distinct products when available", () => {
+    const tiles = [
+      { label: "Tile one", keywords: ["emerald"] as const },
+      { label: "Tile two", keywords: ["emerald"] as const },
+    ];
+
+    const r = resolveTileProducts(emptySiteFeatured(), emeraldCatalog, tiles);
+
+    expect(r.map((tile) => tile.product?.slug)).toEqual(["emerald-swirl", "sapphire-overlay"]);
+    expect(r.map((tile) => tile.source)).toEqual(["keywords", "search-fallback"]);
+  });
+
+  it("keeps admin pins authoritative even when they repeat an already-used product", () => {
+    const featured: SiteFeatured = {
+      collectionTilePins: { "Pinned tile": "emerald-swirl" },
+      lookbookPins: {},
+    };
+    const tiles = [
+      { label: "Keyword tile", keywords: ["emerald"] as const },
+      { label: "Pinned tile", keywords: ["ruby"] as const },
+    ];
+
+    const r = resolveTileProducts(featured, emeraldCatalog, tiles);
+
+    expect(r.map((tile) => tile.product?.slug)).toEqual(["emerald-swirl", "emerald-swirl"]);
+    expect(r.map((tile) => tile.source)).toEqual(["keywords", "pin"]);
+  });
+
+  it("allows repeated keyword products only after distinct products are exhausted", () => {
+    const tiles = [
+      { label: "Tile one", keywords: ["emerald"] as const },
+      { label: "Tile two", keywords: ["emerald"] as const },
+      { label: "Tile three", keywords: ["emerald"] as const },
+    ];
+
+    const r = resolveTileProducts(emptySiteFeatured(), emeraldCatalog.slice(0, 2), tiles);
+
+    expect(r.map((tile) => tile.product?.slug)).toEqual(["emerald-swirl", "sapphire-overlay", "emerald-swirl"]);
   });
 });
 

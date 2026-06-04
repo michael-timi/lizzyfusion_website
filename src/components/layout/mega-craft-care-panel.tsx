@@ -4,9 +4,30 @@ import Link from "next/link";
 import { craftCare, craftCareOlive } from "@/lib/craft-care";
 import { LfRemoteImage } from "@/components/ui/lf-remote-image";
 import { CraftCareBreadcrumb } from "@/components/craft-care/craft-care-breadcrumb";
+import { resolveProductImages, useMegaCatalog } from "@/components/layout/use-mega-catalog";
+
+/**
+ * The Craft & care tiles are editorial (not product-pinned), so we resolve a distinct real
+ * uploaded dress per tile by keyword, keeping the editorial photo as a fallback.
+ */
+const heroKeywords = ["reception", "gown"] as const;
+const tileKeywordsByLabel: Record<string, readonly string[]> = {
+  "Our story": ["bridal", "wedding"],
+  Materials: ["abaya", "ready-to-wear"],
+  Packaging: ["aso-ebi"],
+  "Product care": ["office", "church"],
+};
 
 /** Mega menu preview for Craft & care — links into full editorial hub and subpages. */
 export function MegaCraftCarePanel() {
+  const catalog = useMegaCatalog();
+  const [heroImage, ...tileImages] = resolveProductImages(catalog, [
+    { keywords: heroKeywords, fallback: craftCare.hubHero.image },
+    ...craftCare.categoryTiles.map((tile) => ({
+      keywords: tileKeywordsByLabel[tile.label] ?? [],
+      fallback: tile.image,
+    })),
+  ]);
   return (
     <div className="space-y-8">
       <CraftCareBreadcrumb
@@ -15,7 +36,7 @@ export function MegaCraftCarePanel() {
 
       <div className="relative min-h-[min(14rem,28vh)] w-full overflow-hidden rounded-sm border border-[var(--lf-line)] bg-zinc-100 sm:min-h-[min(16rem,32vh)]">
         <LfRemoteImage
-          src={craftCare.hubHero.image}
+          src={heroImage}
           alt=""
           fill
           className="object-cover object-[center_40%]"
@@ -34,12 +55,12 @@ export function MegaCraftCarePanel() {
       </div>
 
       <ul className="grid grid-cols-2 gap-3 sm:gap-4">
-        {craftCare.categoryTiles.map((tile) => (
+        {craftCare.categoryTiles.map((tile, i) => (
           <li key={tile.label}>
             <Link href={tile.href} className="group/tile block">
               <div className="relative aspect-[5/4] overflow-hidden bg-zinc-100">
                 <LfRemoteImage
-                  src={tile.image}
+                  src={tileImages[i] ?? tile.image}
                   alt=""
                   fill
                   className="object-cover transition duration-500 group-hover/tile:scale-105"
