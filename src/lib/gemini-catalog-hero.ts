@@ -1,4 +1,8 @@
-import { GoogleGenAI, createPartFromBase64, createPartFromText } from "@google/genai";
+import {
+  GoogleGenAI,
+  createPartFromBase64,
+  createPartFromText,
+} from "@google/genai";
 
 const MODEL = "gemini-2.5-flash-image";
 
@@ -14,8 +18,17 @@ export type DressCategory =
   | "mini-dress"
   | "kaftan"
   | "aso-ebi";
-export type MannequinStyle = "auto-varied" | "cream-female" | "matte-black" | "wooden-dress-form" | "headless-white";
-export type StudioBackground = "soft-grey" | "pure-white" | "luxury-boutique" | "sunlit-atelier";
+export type MannequinStyle =
+  | "auto-varied"
+  | "cream-female"
+  | "matte-black"
+  | "wooden-dress-form"
+  | "headless-white";
+export type StudioBackground =
+  | "soft-grey"
+  | "pure-white"
+  | "luxury-boutique"
+  | "sunlit-atelier";
 export type StudioLighting = "softbox" | "editorial" | "natural-daylight";
 export type CameraAngle = "front" | "three-quarter";
 export type PositionStyle =
@@ -48,7 +61,10 @@ const FULL_LENGTH_HEM_ON_MANNEQUIN =
 function describeDressCategory(category: DressCategory | undefined): string {
   switch (category) {
     case "evening-gown":
-      return "Treat the garment as a women's evening gown; show the full length and elegant drape. " + FULL_LENGTH_HEM_ON_MANNEQUIN;
+      return (
+        "Treat the garment as a women's evening gown; show the full length and elegant drape. " +
+        FULL_LENGTH_HEM_ON_MANNEQUIN
+      );
     case "cocktail-dress":
       return "Treat the garment as a women's cocktail dress; keep the silhouette polished and occasion-ready.";
     case "bridal-dress":
@@ -56,15 +72,24 @@ function describeDressCategory(category: DressCategory | undefined): string {
     case "casual-dress":
       return "Treat the garment as a women's casual dress; keep the presentation clean, relaxed, and realistic.";
     case "maxi-dress":
-      return "Treat the garment as a women's maxi dress; preserve floor-length fall. " + FULL_LENGTH_HEM_ON_MANNEQUIN;
+      return (
+        "Treat the garment as a women's maxi dress; preserve floor-length fall. " +
+        FULL_LENGTH_HEM_ON_MANNEQUIN
+      );
     case "midi-dress":
       return "Treat the garment as a women's midi dress; show the full body and natural hem placement below the knee.";
     case "mini-dress":
       return "Treat the garment as a women's mini dress; keep the hem length faithful and do not lengthen it.";
     case "kaftan":
-      return "Treat the garment as a women's kaftan; preserve loose volume, sleeve width, embroidery, and modest drape. " + FULL_LENGTH_HEM_ON_MANNEQUIN;
+      return (
+        "Treat the garment as a women's kaftan; preserve loose volume, sleeve width, embroidery, and modest drape. " +
+        FULL_LENGTH_HEM_ON_MANNEQUIN
+      );
     case "aso-ebi":
-      return "Treat the garment as a women's aso-ebi or occasion dress; preserve embellishment, structured tailoring, wrapper details, and head-to-toe elegance. " + FULL_LENGTH_HEM_ON_MANNEQUIN;
+      return (
+        "Treat the garment as a women's aso-ebi or occasion dress; preserve embellishment, structured tailoring, wrapper details, and head-to-toe elegance. " +
+        FULL_LENGTH_HEM_ON_MANNEQUIN
+      );
     case "auto":
     default:
       return "Infer the women's dress category from the photo without changing the design.";
@@ -74,7 +99,14 @@ function describeDressCategory(category: DressCategory | undefined): string {
 function describeMannequin(style: MannequinStyle | undefined): string {
   switch (style) {
     case "auto-varied":
-      return describeMannequin(pickOne(["cream-female", "matte-black", "wooden-dress-form", "headless-white"] as const));
+      return describeMannequin(
+        pickOne([
+          "cream-female",
+          "matte-black",
+          "wooden-dress-form",
+          "headless-white",
+        ] as const),
+      );
     case "matte-black":
       return "Use a premium matte-black female boutique mannequin with smooth faceless finish.";
     case "wooden-dress-form":
@@ -138,7 +170,13 @@ function describePositionStyle(style: PositionStyle | undefined): string {
     case "auto-varied":
     default:
       return describePositionStyle(
-        pickOne(["classic-straight", "soft-contrapposto", "runway-step", "arms-away", "atelier-display"] as const),
+        pickOne([
+          "classic-straight",
+          "soft-contrapposto",
+          "runway-step",
+          "arms-away",
+          "atelier-display",
+        ] as const),
       );
   }
 }
@@ -189,7 +227,9 @@ export async function generateMannequinHeroImage(
 ): Promise<GeminiHeroResult> {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
-    throw new Error("Missing GEMINI_API_KEY (create a key in Google AI Studio and add it to the server env).");
+    throw new Error(
+      "Missing GEMINI_API_KEY (create a key in Google AI Studio and add it to the server env).",
+    );
   }
 
   const ai = new GoogleGenAI({ apiKey });

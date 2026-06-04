@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useSyncExternalStore } from "react";
-import { trackPurchase } from "@/lib/analytics-events";
 import { clearCart, getCartLinesJson, parseStoredCart, subscribeCartStore } from "@/lib/cart";
 import { buildOrderSnapshot, persistOrderSnapshot } from "@/lib/checkout-order-snapshot";
 import { checkoutTotals } from "@/lib/checkout-totals";
@@ -239,25 +238,10 @@ export function CheckoutPaymentPage() {
               className="mt-6 flex w-full items-center justify-center border border-[var(--lf-purple-deep)] bg-[var(--lf-purple-deep)] py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--lf-purple)]"
               onClick={() => {
                 if (lines.length === 0 || payHref === "#") return;
+                // Persist the order so the success page can fire the (de-duplicated) `purchase` event
+                // once the shopper actually lands on /checkout/success.
                 const snap = buildOrderSnapshot(lines, form, totals);
                 if (snap) persistOrderSnapshot(snap);
-                const items = lines
-                  .map((line) => {
-                    const p = resolveCartLineDisplay(line);
-                    if (!p) return null;
-                    return {
-                      item_id: p.slug,
-                      item_name: p.name,
-                      price: p.price,
-                      quantity: line.qty,
-                    };
-                  })
-                  .filter((x): x is NonNullable<typeof x> => x !== null);
-                void trackPurchase({
-                  value: totals.total,
-                  items,
-                  itemCount: totals.count,
-                });
                 clearCart();
                 window.open(payHref, "_blank", "noopener,noreferrer");
                 router.push("/checkout/success");

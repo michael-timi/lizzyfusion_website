@@ -12,6 +12,7 @@ import { sanitizeNextParam } from "@/lib/auth-redirect";
 import { signOutUser } from "@/lib/firebase-auth";
 import { IconHeart } from "@/components/ui/icon-heart";
 import { landingMedia, nav, navStorefront, shopHrefForSpecialty, site } from "@/lib/site";
+import { resolveProductImages, useMegaCatalog } from "@/components/layout/use-mega-catalog";
 
 const MegaOccasionsPanel = dynamic(
   () => import("@/components/layout/mega-occasions-panel").then((m) => m.MegaOccasionsPanel),
@@ -682,6 +683,19 @@ function MegaPanelContents({
   megaId: string;
   catLinks: { label: string; href: string }[];
 }) {
+  const catalog = useMegaCatalog();
+  const collectionImages = resolveProductImages(catalog, [
+    { keywords: landingMedia.collectionTiles[0].keywords, fallback: landingMedia.collectionTiles[0].image },
+    { keywords: ["aso-ebi"], fallback: landingMedia.collectionTiles[1].image },
+  ]);
+  const newInImages = resolveProductImages(catalog, [
+    { keywords: landingMedia.lookbook[1].shopKeywords[0], fallback: landingMedia.lookbook[1].image },
+    { keywords: landingMedia.lookbook[2].shopKeywords[0], fallback: landingMedia.lookbook[2].image },
+  ]);
+  const lookbookImages = resolveProductImages(
+    catalog,
+    landingMedia.lookbook.map((d) => ({ keywords: d.shopKeywords[0], fallback: d.image })),
+  );
   return (
     <>
       {megaId === "collection" ? (
@@ -757,12 +771,12 @@ function MegaPanelContents({
               <MegaImageCard
                 href={shopHrefForSpecialty(landingMedia.collectionTiles[0].label)}
                 label={landingMedia.collectionTiles[0].label}
-                src={landingMedia.collectionTiles[0].image}
+                src={collectionImages[0]}
               />
               <MegaImageCard
                 href={shopHrefForSpecialty("Aso-ebi")}
                 label="Aso-ebi & groups"
-                src={landingMedia.collectionTiles[1].image}
+                src={collectionImages[1]}
               />
             </div>
           ) : null}
@@ -787,18 +801,18 @@ function MegaPanelContents({
               <MegaImageCard
                 href={landingMedia.lookbook[1].href}
                 label={landingMedia.lookbook[1].label}
-                src={landingMedia.lookbook[1].image}
+                src={newInImages[0]}
               />
               <MegaImageCard
                 href={landingMedia.lookbook[2].href}
                 label={landingMedia.lookbook[2].label}
-                src={landingMedia.lookbook[2].image}
+                src={newInImages[1]}
               />
             </div>
           ) : null}
       {megaId === "lookbook" ? (
             <div className="grid gap-8 lg:grid-cols-4">
-              {landingMedia.lookbook.map((d) => (
+              {landingMedia.lookbook.map((d, i) => (
                 <Link
                   key={d.label}
                   href={d.href}
@@ -806,7 +820,7 @@ function MegaPanelContents({
                 >
                   <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100">
                     <LfRemoteImage
-                      src={d.image}
+                      src={lookbookImages[i]}
                       alt=""
                       fill
                       className="object-cover transition duration-500 group-hover/card:scale-105"

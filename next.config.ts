@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     return [{ source: "/favicon.ico", destination: "/icon.png" }];
   },
   images: {
+    qualities: [75, 85],
     remotePatterns: [
       {
         protocol: "https",

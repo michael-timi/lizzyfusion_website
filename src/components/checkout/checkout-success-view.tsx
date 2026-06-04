@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { clearOrderSnapshot, readOrderSnapshot } from "@/lib/checkout-order-snapshot";
+import { trackPurchase } from "@/lib/analytics-events";
+import { clearOrderSnapshot, readOrderSnapshot, transactionIdForSnapshot } from "@/lib/checkout-order-snapshot";
 import { submitOrderFromSnapshot } from "@/lib/firebase-orders";
 import { getFirebaseAuth } from "@/lib/firebase-auth";
 import { site } from "@/lib/site";
@@ -36,6 +37,22 @@ export function CheckoutSuccessView() {
       return;
     }
     attempted.current = true;
+
+    // The snapshot only exists right after a real checkout (cleared below), so the purchase fires
+    // once per completed order; `transaction_id` lets GA4 drop any accidental re-fires.
+    void trackPurchase({
+      transactionId: transactionIdForSnapshot(snapshot),
+      value: snapshot.totals.total,
+      tax: snapshot.totals.tax,
+      shippingTier: snapshot.shipping.shippingMethod,
+      items: snapshot.lines.map((l) => ({
+        item_id: l.slug,
+        item_name: l.name,
+        price: l.unitPrice,
+        quantity: l.qty,
+      })),
+      itemCount: snapshot.totals.count,
+    });
 
     const auth = getFirebaseAuth();
     if (!auth?.currentUser) {

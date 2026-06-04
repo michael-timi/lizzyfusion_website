@@ -1,5 +1,9 @@
 /** Lizzy Fusion — single source for contact, brand copy, and business rules. */
 
+import founderAtelier from "@/assets/founder/founder-atelier.jpg";
+import founderPortrait from "@/assets/founder/founder-portrait.jpg";
+import founderStudio from "@/assets/founder/founder-studio.jpg";
+
 import type { CartLine } from "@/lib/cart";
 
 export const site = {
@@ -223,6 +227,27 @@ export const nav = [
  */
 export const landingMedia = {
   hero: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=2400&q=85&auto=format&fit=crop",
+  /**
+   * Founder-led hero on `/`. Static imports from `src/assets/founder/` so Next.js can
+   * generate a `blurDataURL` for `placeholder="blur"` and emit the correct intrinsic
+   * dimensions for layout. The portrait is the focal image; studio + atelier support it.
+   */
+  founder: {
+    name: "Lizzy",
+    role: "Founder & creative director",
+    portrait: {
+      src: founderPortrait,
+      alt: "Lizzy, founder of Lizzy Fusion, beside a red embellished gown on a dress form",
+    },
+    studio: {
+      src: founderStudio,
+      alt: "Lizzy seated in the atelier with a red gown on a dress form",
+    },
+    atelier: {
+      src: founderAtelier,
+      alt: "Lizzy at the cutting table with thread spools and a beaded red gown",
+    },
+  },
   sustainability:
     "https://images.unsplash.com/photo-1585123334904-845d60e97b29?w=2000&q=80&auto=format&fit=crop",
   collectionTiles: [

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { catalogDateMatchesRange, isInvertedDateRange } from "@/lib/admin-catalog-date-filter";
 
 export type AdminCatalogRow = {
   slug: string;
@@ -12,22 +13,40 @@ export type AdminCatalogRow = {
   origin: "Firestore only" | "Code" | "Firestore override";
   hasRemote: boolean;
   hasStyleVariants: boolean;
+  /** Firestore document create time (epoch ms); null for unseeded code-default products. */
+  createdAtMs: number | null;
+  /** Firestore document last-write time (epoch ms); null for unseeded code-default products. */
+  updatedAtMs: number | null;
 };
 
-type OriginFilter = "all" | AdminCatalogRow["origin"];
-type FirestoreFilter = "all" | "in-firestore" | "code-only";
 type StyleFilter = "all" | "multi-style" | "single-price";
+type DateBasis = "created" | "updated";
 
 const inputClass = "input";
+
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
+function formatRowDate(ms: number | null): string {
+  if (ms == null) return "—";
+  return dateFormatter.format(new Date(ms));
+}
 
 type Props = { rows: AdminCatalogRow[] };
 
 export function AdminCatalogTable({ rows }: Props) {
   const [search, setSearch] = useState("");
   const [tagFilter, setTagFilter] = useState("all");
-  const [originFilter, setOriginFilter] = useState<OriginFilter>("all");
-  const [firestoreFilter, setFirestoreFilter] = useState<FirestoreFilter>("all");
   const [styleFilter, setStyleFilter] = useState<StyleFilter>("all");
+  const [dateBasis, setDateBasis] = useState<DateBasis>("created");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const dateRangeActive = dateFrom.trim() !== "" || dateTo.trim() !== "";
+  const invertedRange = isInvertedDateRange(dateFrom, dateTo);
 
   const tags = useMemo(() => {
     const set = new Set<string>();
@@ -42,28 +61,23 @@ export function AdminCatalogTable({ rows }: Props) {
     return rows.filter((r) => {
       if (q && !`${r.slug} ${r.name} ${r.tag}`.toLowerCase().includes(q)) return false;
       if (tagFilter !== "all" && r.tag !== tagFilter) return false;
-      if (originFilter !== "all" && r.origin !== originFilter) return false;
-      if (firestoreFilter === "in-firestore" && !r.hasRemote) return false;
-      if (firestoreFilter === "code-only" && r.hasRemote) return false;
       if (styleFilter === "multi-style" && !r.hasStyleVariants) return false;
       if (styleFilter === "single-price" && r.hasStyleVariants) return false;
+      const dateValue = dateBasis === "created" ? r.createdAtMs : r.updatedAtMs;
+      if (!catalogDateMatchesRange(dateValue, dateFrom, dateTo)) return false;
       return true;
     });
-  }, [rows, search, tagFilter, originFilter, firestoreFilter, styleFilter]);
+  }, [rows, search, tagFilter, styleFilter, dateBasis, dateFrom, dateTo]);
 
   const hasActiveFilters =
-    search.trim() !== "" ||
-    tagFilter !== "all" ||
-    originFilter !== "all" ||
-    firestoreFilter !== "all" ||
-    styleFilter !== "all";
+    search.trim() !== "" || tagFilter !== "all" || styleFilter !== "all" || dateRangeActive;
 
   function clearFilters() {
     setSearch("");
     setTagFilter("all");
-    setOriginFilter("all");
-    setFirestoreFilter("all");
     setStyleFilter("all");
+    setDateFrom("");
+    setDateTo("");
   }
 
   return (
@@ -107,41 +121,6 @@ export function AdminCatalogTable({ rows }: Props) {
         <div
           className="min-w-[10rem]"
         >
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="catalog-filter-origin">
-            Origin
-          </label>
-          <select
-            id="catalog-filter-origin"
-            className={`${inputClass} mt-1`}
-            value={originFilter}
-            onChange={(e) => setOriginFilter(e.target.value as OriginFilter)}
-          >
-            <option value="all">All origins</option>
-            <option value="Firestore only">Firestore only</option>
-            <option value="Code">Code</option>
-            <option value="Firestore override">Firestore override</option>
-          </select>
-        </div>
-        <div
-          className="min-w-[10rem]"
-        >
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="catalog-filter-firestore">
-            Firestore doc
-          </label>
-          <select
-            id="catalog-filter-firestore"
-            className={`${inputClass} mt-1`}
-            value={firestoreFilter}
-            onChange={(e) => setFirestoreFilter(e.target.value as FirestoreFilter)}
-          >
-            <option value="all">All</option>
-            <option value="in-firestore">Has Firestore row</option>
-            <option value="code-only">Code default only</option>
-          </select>
-        </div>
-        <div
-          className="min-w-[10rem]"
-        >
           <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]" htmlFor="catalog-filter-style">
             Pricing
           </label>
@@ -156,6 +135,55 @@ export function AdminCatalogTable({ rows }: Props) {
             <option value="single-price">Single price</option>
           </select>
         </div>
+        <div className="min-w-[9rem]">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="catalog-filter-date-basis"
+          >
+            Date
+          </label>
+          <select
+            id="catalog-filter-date-basis"
+            className={`${inputClass} mt-1`}
+            value={dateBasis}
+            onChange={(e) => setDateBasis(e.target.value as DateBasis)}
+          >
+            <option value="created">Date added</option>
+            <option value="updated">Last updated</option>
+          </select>
+        </div>
+        <div className="min-w-[9rem]">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="catalog-filter-date-from"
+          >
+            From
+          </label>
+          <input
+            id="catalog-filter-date-from"
+            type="date"
+            className={`${inputClass} mt-1`}
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+        </div>
+        <div className="min-w-[9rem]">
+          <label
+            className="block text-xs font-semibold uppercase tracking-wider text-[var(--lf-muted)]"
+            htmlFor="catalog-filter-date-to"
+          >
+            To
+          </label>
+          <input
+            id="catalog-filter-date-to"
+            type="date"
+            className={`${inputClass} mt-1`}
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+        </div>
         {hasActiveFilters ? (
           <button
             type="button"
@@ -167,10 +195,22 @@ export function AdminCatalogTable({ rows }: Props) {
         ) : null}
       </div>
 
-      <p className="text-sm text-[var(--lf-muted)]">
-        Showing <span className="font-semibold text-[var(--lf-ink)]">{filtered.length}</span> of{" "}
-        <span className="font-semibold text-[var(--lf-ink)]">{rows.length}</span> pieces
-      </p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <p className="text-sm text-[var(--lf-muted)]">
+          Showing <span className="font-semibold text-[var(--lf-ink)]">{filtered.length}</span> of{" "}
+          <span className="font-semibold text-[var(--lf-ink)]">{rows.length}</span> pieces
+        </p>
+        {invertedRange ? (
+          <span className="text-xs font-medium text-amber-600">
+            “From” is after “To” — no dates fall in this range.
+          </span>
+        ) : dateRangeActive ? (
+          <span className="text-xs text-[var(--lf-muted)]">
+            Filtering by {dateBasis === "created" ? "date added" : "last updated"}; products without a Firestore date
+            are hidden.
+          </span>
+        ) : null}
+      </div>
 
       {filtered.length === 0 ? (
         <p className="rounded-xl border border-dashed border-zinc-200 bg-white px-6 py-12 text-center text-sm text-[var(--lf-muted)]">
@@ -190,6 +230,7 @@ export function AdminCatalogTable({ rows }: Props) {
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Collection</th>
                 <th className="px-4 py-3">Price</th>
+                <th className="px-4 py-3">{dateBasis === "created" ? "Added" : "Updated"}</th>
                 <th className="px-4 py-3">Origin</th>
                 <th className="px-4 py-3">Firestore</th>
                 <th className="px-4 py-3">Storefront</th>
@@ -217,6 +258,9 @@ export function AdminCatalogTable({ rows }: Props) {
                     ) : (
                       p.priceLabel
                     )}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-xs text-[var(--lf-muted)]">
+                    {formatRowDate(dateBasis === "created" ? p.createdAtMs : p.updatedAtMs)}
                   </td>
                   <td className="px-4 py-3 text-xs text-[var(--lf-muted)]">{p.origin}</td>
                   <td className="px-4 py-3">
