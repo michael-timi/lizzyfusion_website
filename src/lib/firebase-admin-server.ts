@@ -186,7 +186,7 @@ export async function verifyAdminFromIdToken(idToken: string): Promise<
   }
 
   try {
-    const decoded = await admin.auth(app).verifyIdToken(idToken);
+    const decoded = await admin.auth(app).verifyIdToken(idToken, true);
     const snap = await admin.firestore().collection("users").doc(decoded.uid).get();
     const data = snap.data();
     if (!snap.exists) {

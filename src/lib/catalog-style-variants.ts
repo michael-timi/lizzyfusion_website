@@ -200,12 +200,6 @@ export function buildPdpGallery(product: CatalogProduct): PdpGallery {
   return { urls, variantIdsByIndex };
 }
 
-/** @deprecated Use variantIdsByIndex — first id or null. */
-export function primaryVariantIdForIndex(variantIdsByIndex: string[][], index: number): string | null {
-  const ids = variantIdsByIndex[index];
-  return ids?.[0] ?? null;
-}
-
 export type CatalogPriceView = Pick<CatalogProduct, "price" | "compareAtPrice">;
 
 /** Price block for a selected variant, or the product default. */
@@ -240,14 +234,4 @@ export function withListingPriceFromVariants(
   };
   if (galleryStyleLinks?.length) return { ...base, galleryStyleLinks };
   return base;
-}
-
-export function uniqueLinkableGalleryUrls(heroUrl: string, galleryUrls?: string[]): string[] {
-  const out: string[] = [];
-  const push = (u: string) => {
-    if (isHttpsUrl(u) && !out.includes(u)) out.push(u);
-  };
-  push(heroUrl);
-  if (galleryUrls) for (const u of galleryUrls) push(u);
-  return out.slice(0, 6);
 }

@@ -370,8 +370,6 @@ export const landingMedia = {
   ],
 } as const;
 
-export type LookbookLook = (typeof landingMedia.lookbook)[number];
-
 /** PDP gallery: primary image, optional extra URLs from the product, else legacy lookbook padding. */
 export function galleryUrlsForProduct(product: {
   slug: string;
